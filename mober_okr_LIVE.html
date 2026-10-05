@@ -1360,7 +1360,7 @@ switchTab=function(name,el){
 
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-buildTable();updateHeader();loadFromDB();
+buildTable();updateHeader();loadFromDB().then(function(){if(location.hash==='#signin')openLogin();else if(location.hash==='#signup')openSignup();});
 </script>
 <span id="btnSample" style="display:none"></span><span id="samplePill" style="display:none"></span><span id="syncStatus" style="display:none"></span>
 </body>
