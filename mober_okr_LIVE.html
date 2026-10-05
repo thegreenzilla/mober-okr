@@ -2,40 +2,90 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mober OKR — Live Scorecard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mober OKR — Live</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-* { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:Arial,sans-serif; font-size:12px; background:#e8edf2; color:#222; }
-.page { max-width:1440px; margin:20px auto; background:#fff; border-radius:8px; box-shadow:0 2px 20px rgba(0,0,0,0.13); overflow:hidden; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:12px;background:#e8edf2;color:#222}
+.page{max-width:1440px;margin:20px auto;background:#fff;border-radius:8px;box-shadow:0 2px 20px rgba(0,0,0,0.13);overflow:hidden}
+.header{background:linear-gradient(135deg,#0d2b55 0%,#1a5276 100%);color:#fff;padding:16px 28px 12px;display:flex;align-items:center;justify-content:space-between}
+.header-left h1{font-size:19px;font-weight:700;margin-bottom:2px}
+.header-left p{font-size:11px;opacity:0.7}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-info{text-align:right;font-size:11px;line-height:1.8;opacity:0.85}
+.header-info strong{font-size:13px;display:block}
+.role-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:none;letter-spacing:0.3px}
+.role-badge:hover{opacity:0.85}
+.rb-viewer{background:#ecf0f1;color:#555}
+.rb-editor{background:#d5f0e0;color:#1e8449}
+.rb-admin{background:#d6eaf8;color:#1a5276}
+.gear-btn{background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:20px;display:none}
+.gear-btn:hover{color:#fff}
+.sync-indicator{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600}
+.sync-ok{background:#d5f0e0;color:#1e8449}
+.sync-err{background:#fdedec;color:#c0392b}
+.sync-busy{background:#fef9e7;color:#856404}
 
-/* HEADER */
-.header { background:linear-gradient(135deg,#0d2b55 0%,#1a5276 100%); color:#fff; padding:16px 28px 12px; display:flex; align-items:center; justify-content:space-between; }
-.header-left h1 { font-size:19px; font-weight:700; letter-spacing:0.3px; margin-bottom:2px; }
-.header-left p { font-size:11px; opacity:0.7; }
-.header-right { text-align:right; font-size:11px; line-height:1.8; opacity:0.85; }
-.header-right strong { font-size:13px; display:block; }
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:2px solid #dde2e8;padding:0 28px;background:#f8f9fc}
+.tab{padding:10px 20px;cursor:pointer;font-size:12px;font-weight:600;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab:hover{color:#0d2b55}
+.tab.active{color:#0d2b55;border-bottom-color:#0d2b55}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* DASHBOARD */
+.dashboard{padding:20px 28px}
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.metric-card{background:#f8f9fc;border:1px solid #dde2e8;border-radius:8px;padding:14px 16px}
+.metric-label{font-size:11px;color:#888;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px}
+.metric-val{font-size:28px;font-weight:700;color:#0d2b55;line-height:1}
+.metric-sub{font-size:11px;color:#aaa;margin-top:3px}
+.metric-card.green .metric-val{color:#27ae60}
+.metric-card.amber .metric-val{color:#e67e22}
+.metric-card.red .metric-val{color:#e74c3c}
+.obj-progress-wrap{margin-bottom:20px}
+.obj-progress-wrap h3{font-size:13px;font-weight:700;color:#0d2b55;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #eee}
+.obj-card{background:#f8f9fc;border:1px solid #dde2e8;border-radius:8px;padding:14px 16px;margin-bottom:10px}
+.obj-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.obj-card-title{font-size:12px;font-weight:700;color:#0d2b55}
+.obj-card-pct{font-size:18px;font-weight:700}
+.pct-green{color:#27ae60}.pct-amber{color:#e67e22}.pct-red{color:#e74c3c}
+.progress-bar-wrap{height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.progress-bar{height:100%;border-radius:4px;transition:width 0.4s}
+.pb-green{background:#27ae60}.pb-amber{background:#e67e22}.pb-red{background:#e74c3c}
+.kr-dots{display:flex;gap:4px;flex-wrap:wrap}
+.kr-dot{width:14px;height:14px;border-radius:3px;cursor:pointer}
+.kr-dot.wg{background:#27ae60}.kr-dot.wy{background:#f39c12}.kr-dot.wr{background:#e74c3c}.kr-dot.wb{background:#d5d8dc}
+.week-heatmap{margin-bottom:20px}
+.week-heatmap h3{font-size:13px;font-weight:700;color:#0d2b55;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #eee}
+.heatmap-grid{display:grid;grid-template-columns:120px repeat(13,1fr);gap:2px;font-size:10px}
+.hm-label{padding:3px 6px;color:#888;text-align:right;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-cell{height:22px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
+.hm-hdr{text-align:center;padding:3px 0;color:#888;font-weight:600}
+.hm-g{background:#27ae60}.hm-y{background:#f39c12}.hm-r{background:#e74c3c}.hm-b{background:#e0e0e0;color:#aaa}
+.legend-row{display:flex;gap:12px;margin-top:8px;font-size:11px;color:#888}
+.legend-row span{display:flex;align-items:center;gap:4px}
+.ldot{width:10px;height:10px;border-radius:2px;display:inline-block}
 
 /* LEGEND */
-.legend { display:flex; align-items:center; gap:16px; padding:7px 28px; background:#f4f6f9; border-bottom:1px solid #dde2e8; flex-wrap:wrap; }
-.legend-item { display:flex; align-items:center; gap:5px; font-size:11px; color:#555; }
-.ld { width:22px; height:17px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
-.ld-g{background:#27ae60;color:#fff} .ld-y{background:#f39c12;color:#fff}
-.ld-r{background:#e74c3c;color:#fff} .ld-b{background:#bdc3c7;color:#777} .ld-p{background:#8e44ad;color:#fff}
-.legend-right { margin-left:auto; font-size:11px; color:#888; }
+.legend{display:flex;align-items:center;gap:16px;padding:7px 28px;background:#f4f6f9;border-bottom:1px solid #dde2e8;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#555}
+.ld{width:22px;height:17px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.ld-g{background:#27ae60;color:#fff}.ld-y{background:#f39c12;color:#fff}
+.ld-r{background:#e74c3c;color:#fff}.ld-b{background:#bdc3c7;color:#777}.ld-p{background:#8e44ad;color:#fff}
+.legend-right{margin-left:auto;font-size:11px;color:#888}
 
 /* CONTROLS */
-.controls { display:flex; align-items:center; gap:8px; padding:8px 28px; border-bottom:1px solid #dde2e8; background:#fff; flex-wrap:wrap; }
-.controls label { font-size:11px; color:#666; white-space:nowrap; }
-.controls input[type="text"],.controls input[type="date"] { border:1px solid #ccc; border-radius:4px; padding:4px 7px; font-size:11px; }
-#programName { width:160px; } #startDate { width:130px; }
-#endDateDisplay { font-size:11px; color:#1a5276; font-weight:600; }
-.ctrl-sep { width:1px; height:22px; background:#ddd; margin:0 4px; }
-.btn { padding:5px 12px; border-radius:4px; border:1px solid #aaa; background:#f5f5f5; cursor:pointer; font-size:11px; font-weight:600; }
-.btn:hover { background:#e5e5e5; }
-.btn-navy{background:#0d2b55;color:#fff;border-color:#0d2b55} .btn-navy:hover{background:#1a3f72}
-.btn-green{background:#27ae60;color:#fff;border-color:#27ae60} .btn-green:hover{background:#219150}
-.btn-orange{background:#e67e22;color:#fff;border-color:#e67e22} .btn-orange:hover{background:#ca6f1e}
+.controls{display:flex;align-items:center;gap:8px;padding:8px 28px;border-bottom:1px solid #dde2e8;background:#fff;flex-wrap:wrap}
+.controls input[type="text"]{border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:11px;width:160px}
+.ctrl-sep{width:1px;height:22px;background:#ddd;margin:0 4px}
+.btn{padding:5px 12px;border-radius:4px;border:1px solid #aaa;background:#f5f5f5;cursor:pointer;font-size:11px;font-weight:600}
+.btn:hover{background:#e5e5e5}
+.btn-navy{background:#0d2b55;color:#fff;border-color:#0d2b55}.btn-navy:hover{background:#1a3f72}
+.btn-green{background:#27ae60;color:#fff;border-color:#27ae60}.btn-green:hover{background:#219150}
+.btn-orange{background:#e67e22;color:#fff;border-color:#e67e22}.btn-orange:hover{background:#ca6f1e}
 
 /* PLAN B */
 .planb-banner{display:none;margin:10px 28px;border-left:6px solid #c0392b;background:#fdf2f2;padding:12px 16px;border-radius:4px}
@@ -59,8 +109,6 @@ th.kpi-h{text-align:left;padding:6px 10px;background:#0d2b55;min-width:240px;fon
 th.wt-h{width:40px;font-size:10px;background:#1a3f72}
 th.wk-h{width:38px;min-width:34px;font-size:11px}
 th.w6-th{background:#d35400!important;border-left:2px solid #e67e22;border-right:2px solid #e67e22}
-
-/* OBJ row */
 td.obj-row{background:#0d2b55;color:#fff;font-weight:700;font-size:11px;padding:0;border-color:#1a3f72}
 td.obj-score{background:#0d2b55;color:rgba(255,255,255,0.4);text-align:center;font-size:9px;border-color:#1a3f72;vertical-align:middle}
 td.obj-score.w6-obj{color:#e67e22!important;font-weight:800;background:#0a2040;border-left:2px solid #e67e22;border-right:2px solid #e67e22}
@@ -68,14 +116,11 @@ td.obj-score.w6-obj{color:#e67e22!important;font-weight:800;background:#0a2040;b
 .obj-edit-id{font-size:10px;font-weight:800;color:#7fb3d3;min-width:54px;white-space:nowrap}
 .obj-title-text{flex:1;font-size:11px;font-weight:700;color:#fff;cursor:pointer;border-bottom:1px dashed rgba(255,255,255,0.35);padding-bottom:1px}
 .obj-title-input{flex:1;font-size:11px;font-weight:700;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.5);border-radius:3px;color:#fff;padding:2px 6px;display:none}
-.obj-btn{font-size:10px;padding:2px 7px;border-radius:3px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:#fff;cursor:pointer;white-space:nowrap}
+.obj-btn{font-size:10px;padding:2px 7px;border-radius:3px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:#fff;cursor:pointer}
 .obj-btn:hover{background:rgba(255,255,255,0.25)}
 .obj-del-btn{font-size:10px;padding:2px 7px;border-radius:3px;border:1px solid #e74c3c;background:rgba(231,76,60,0.2);color:#f1948a;cursor:pointer}
 .obj-del-btn:hover{background:#c0392b;color:#fff}
 .add-kr-btn{font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid #27ae60;background:#1e8449;color:#fff;cursor:pointer}
-.add-kr-btn:hover{background:#27ae60}
-
-/* KR rows */
 td.kr-label{padding:5px 10px 5px 16px;background:#f7f9fc;font-size:11px;color:#222;line-height:1.35;vertical-align:middle}
 .kr-label-wrap{display:flex;align-items:flex-start;gap:6px}
 .kr-id-badge{font-size:9px;font-weight:700;color:#1a5276;min-width:46px;padding-top:1px;white-space:nowrap}
@@ -93,270 +138,230 @@ td.wk{text-align:center;vertical-align:middle;padding:0;width:38px;min-width:34p
 td.wk.w6-col{border-left:2px solid #e67e22!important;border-right:2px solid #e67e22!important}
 td.wk div{height:30px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:filter 0.1s}
 td.wk div:hover{filter:brightness(0.85)}
-.wg{background:#27ae60;color:#fff} .wy{background:#f39c12;color:#fff}
-.wr{background:#e74c3c;color:#fff} .wb{background:#d5d8dc;color:#888;font-size:10px!important}
-
-/* SCORE ROW */
+.wg{background:#27ae60;color:#fff}.wy{background:#f39c12;color:#fff}
+.wr{background:#e74c3c;color:#fff}.wb{background:#d5d8dc;color:#888;font-size:10px!important}
 tr.score-row td{background:#1a3f72;color:#fff;text-align:center;font-size:10px;font-weight:700;padding:4px 2px;border-color:#2471a3}
 tr.score-row td.score-label{text-align:left;padding-left:10px}
 tr.score-row td.w6-col{border-left:2px solid #e67e22!important;border-right:2px solid #e67e22!important}
 
-/* MODAL */
-.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center}
-.modal-overlay.show{display:flex}
-.modal-box{background:#fff;border-radius:10px;padding:22px 26px;min-width:320px;max-width:420px;box-shadow:0 8px 36px rgba(0,0,0,0.22)}
-.modal-box h3{font-size:13px;font-weight:700;color:#0d2b55;margin-bottom:3px}
-.modal-sub{font-size:11px;color:#888;margin-bottom:14px;line-height:1.4}
+/* AUDIT */
+.audit-panel{margin:0 28px 20px;border:1px solid #dde2e8;border-radius:6px;overflow:hidden}
+.audit-header{background:#1a1a2e;color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.audit-header h4{font-size:12px;font-weight:600}
+.audit-toggle{font-size:11px;color:rgba(255,255,255,0.6)}
+.audit-body{display:none;max-height:240px;overflow-y:auto}
+.audit-body.open{display:block}
+.audit-table{width:100%;border-collapse:collapse;font-size:11px}
+.audit-table th{background:#f4f6f9;padding:5px 10px;text-align:left;font-weight:600;color:#555;border-bottom:1px solid #dde2e8;white-space:nowrap;position:sticky;top:0}
+.audit-table td{padding:5px 10px;border-bottom:1px solid #f0f0f0;color:#333;vertical-align:top}
+.audit-table tr:hover td{background:#f9f9f9}
+.audit-empty{padding:16px;text-align:center;color:#aaa;font-size:11px}
+.log-g{color:#27ae60;font-weight:700}.log-y{color:#e67e22;font-weight:700}.log-r{color:#e74c3c;font-weight:700}.log-b{color:#aaa}
+.audit-export-btn{font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.1);color:#fff;cursor:pointer}
+
+/* SETTINGS */
+.settings-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.35);z-index:400;display:none}
+.settings-overlay.show{display:block}
+.settings-drawer{position:fixed;top:0;right:0;width:380px;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,0.15);z-index:401;overflow-y:auto;display:flex;flex-direction:column}
+.settings-header{background:#0d2b55;color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.settings-header h2{font-size:14px;font-weight:700}
+.settings-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1}
+.settings-body{padding:20px;flex:1}
+.settings-section{margin-bottom:22px}
+.settings-section h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px}
+.settings-row{margin-bottom:10px}
+.settings-row label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:4px}
+.settings-row input,.settings-row select{width:100%;border:1px solid #ccc;border-radius:4px;padding:6px 9px;font-size:12px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.toggle-row label{font-size:12px;color:#333}
+.toggle{position:relative;width:38px;height:20px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:20px;transition:0.3s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.3s}
+.toggle input:checked+.toggle-slider{background:#27ae60}
+.toggle input:checked+.toggle-slider:before{transform:translateX(18px)}
+.user-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+.user-table th{background:#f4f6f9;padding:5px 8px;text-align:left;font-weight:600;color:#555;border:1px solid #e0e0e0}
+.user-table td{padding:5px 8px;border:1px solid #e0e0e0;vertical-align:middle}
+.del-user-btn{background:#fdedec;border:1px solid #e74c3c;color:#c0392b;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer}
+.del-user-btn:hover{background:#e74c3c;color:#fff}
+.add-user-btn{margin-top:8px;font-size:11px;padding:4px 12px;border-radius:4px;border:1px solid #27ae60;background:#eafaf1;color:#1e8449;cursor:pointer;font-weight:600}
+.add-user-btn:hover{background:#27ae60;color:#fff}
+.save-settings-btn{width:100%;padding:8px;background:#0d2b55;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;margin-top:8px}
+.save-settings-btn:hover{background:#1a3f72}
+.activity-log{max-height:180px;overflow-y:auto;font-size:11px;background:#f9f9f9;border:1px solid #eee;border-radius:4px;padding:8px 10px}
+.al-row{padding:3px 0;border-bottom:1px solid #f0f0f0;color:#555;line-height:1.4}
+.al-row:last-child{border-bottom:none}
+.al-time{color:#aaa;font-size:10px;margin-right:6px}
+.al-user{font-weight:700;color:#1a5276;margin-right:4px}
+.al-empty{color:#aaa;font-style:italic}
+
+/* USER MODAL */
+.umodal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:600;align-items:center;justify-content:center}
+.umodal-overlay.show{display:flex}
+.umodal-box{background:#fff;border-radius:12px;width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25)}
+.umodal-hdr{background:#0d2b55;color:#fff;padding:16px 20px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between}
+.umodal-hdr h3{font-size:14px;font-weight:700}
+.umodal-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1}
+.umodal-body{padding:20px}
+.uf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.uf-field label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:3px}
+.uf-field input,.uf-field select{width:100%;border:1px solid #ccc;border-radius:4px;padding:6px 9px;font-size:12px}
+.uf-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#888;border-bottom:1px solid #eee;padding-bottom:4px;margin:14px 0 10px}
+.uf-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid #eee}
+.activation-preview{background:#f4f6f9;border:1px solid #dde2e8;border-radius:6px;padding:12px;font-size:11px;color:#333;line-height:1.6;white-space:pre-wrap;font-family:monospace;margin-top:10px}
+.mailto-btn{padding:6px 14px;background:#27ae60;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;margin-top:8px}
+.copy-btn{padding:6px 14px;background:#2471a3;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;margin-top:8px;margin-left:6px}
+.uf-error{color:#e74c3c;font-size:11px;margin-top:8px;min-height:16px}
+
+/* LOGIN */
+.login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:500;display:flex;align-items:center;justify-content:center}
+.login-overlay.hidden{display:none}
+.login-box{background:#fff;border-radius:12px;padding:28px 32px;width:320px;box-shadow:0 8px 40px rgba(0,0,0,0.25)}
+.login-box h3{font-size:15px;font-weight:700;color:#0d2b55;margin-bottom:4px}
+.login-box p{font-size:11px;color:#888;margin-bottom:18px}
+.login-field{margin-bottom:12px}
+.login-field label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:4px}
+.login-field select,.login-field input{width:100%;border:1px solid #ccc;border-radius:5px;padding:7px 10px;font-size:12px}
+.login-error{font-size:11px;color:#e74c3c;margin-bottom:8px;min-height:16px}
+.login-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+/* CELL MODAL */
+.cmodal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center}
+.cmodal-overlay.show{display:flex}
+.cmodal-box{background:#fff;border-radius:10px;padding:22px 26px;min-width:320px;max-width:420px;box-shadow:0 8px 36px rgba(0,0,0,0.22)}
+.cmodal-box h3{font-size:13px;font-weight:700;color:#0d2b55;margin-bottom:3px}
+.cmodal-sub{font-size:11px;color:#888;margin-bottom:14px;line-height:1.4}
 .modal-field{margin-bottom:12px}
 .modal-field label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:4px}
 .modal-field select,.modal-field input[type="text"]{width:100%;border:1px solid #ccc;border-radius:5px;padding:6px 9px;font-size:12px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 
-
-/* ROLE BADGE */
-.role-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700; cursor:pointer; border:none; letter-spacing:0.3px; }
-.role-badge:hover { opacity:0.85; }
-.rb-viewer  { background:#ecf0f1; color:#555; }
-.rb-editor  { background:#d5f0e0; color:#1e8449; }
-.rb-admin   { background:#d6eaf8; color:#1a5276; }
-
-/* LOGIN OVERLAY */
-.login-overlay { position:fixed; top:0;left:0;width:100%;height:100%; background:rgba(0,0,0,0.55); z-index:500; display:flex; align-items:center; justify-content:center; }
-.login-overlay.hidden { display:none; }
-.login-box { background:#fff; border-radius:12px; padding:28px 32px; width:320px; box-shadow:0 8px 40px rgba(0,0,0,0.25); }
-.login-box h3 { font-size:15px; font-weight:700; color:#0d2b55; margin-bottom:4px; }
-.login-box p  { font-size:11px; color:#888; margin-bottom:18px; }
-.login-field  { margin-bottom:12px; }
-.login-field label { display:block; font-size:11px; font-weight:600; color:#555; margin-bottom:4px; }
-.login-field select, .login-field input { width:100%; border:1px solid #ccc; border-radius:5px; padding:7px 10px; font-size:12px; }
-.login-error { font-size:11px; color:#e74c3c; margin-bottom:8px; min-height:16px; }
-.login-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
-
-/* SETTINGS DRAWER */
-.settings-overlay { position:fixed; top:0;left:0;width:100%;height:100%; background:rgba(0,0,0,0.35); z-index:400; display:none; }
-.settings-overlay.show { display:block; }
-.settings-drawer { position:fixed; top:0;right:0;width:360px;height:100%; background:#fff; box-shadow:-4px 0 24px rgba(0,0,0,0.15); z-index:401; overflow-y:auto; display:flex; flex-direction:column; }
-.settings-header { background:#0d2b55; color:#fff; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
-.settings-header h2 { font-size:14px; font-weight:700; }
-.settings-close { background:none; border:none; color:#fff; font-size:20px; cursor:pointer; line-height:1; }
-.settings-body { padding:20px; flex:1; }
-.settings-section { margin-bottom:22px; }
-.settings-section h4 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#888; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px; }
-.settings-row { margin-bottom:10px; }
-.settings-row label { display:block; font-size:11px; font-weight:600; color:#555; margin-bottom:4px; }
-.settings-row input[type="text"], .settings-row input[type="date"], .settings-row input[type="number"], .settings-row select { width:100%; border:1px solid #ccc; border-radius:4px; padding:6px 9px; font-size:12px; }
-.toggle-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.toggle-row label { font-size:12px; color:#333; }
-.toggle { position:relative; width:38px; height:20px; }
-.toggle input { opacity:0; width:0; height:0; }
-.toggle-slider { position:absolute; cursor:pointer; top:0;left:0;right:0;bottom:0; background:#ccc; border-radius:20px; transition:0.3s; }
-.toggle-slider:before { position:absolute; content:""; height:14px; width:14px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
-.toggle input:checked + .toggle-slider { background:#27ae60; }
-.toggle input:checked + .toggle-slider:before { transform:translateX(18px); }
-
-/* USER TABLE */
-.user-table { width:100%; border-collapse:collapse; font-size:11px; margin-top:6px; }
-.user-table th { background:#f4f6f9; padding:5px 8px; text-align:left; font-weight:600; color:#555; border:1px solid #e0e0e0; }
-.user-table td { padding:5px 8px; border:1px solid #e0e0e0; vertical-align:middle; }
-.user-table input { width:100%; border:1px solid #ddd; border-radius:3px; padding:3px 5px; font-size:11px; }
-.user-table select { border:1px solid #ddd; border-radius:3px; padding:3px 4px; font-size:11px; }
-.del-user-btn { background:#fdedec; border:1px solid #e74c3c; color:#c0392b; border-radius:3px; padding:2px 7px; font-size:10px; cursor:pointer; }
-.del-user-btn:hover { background:#e74c3c; color:#fff; }
-.add-user-btn { margin-top:8px; font-size:11px; padding:4px 12px; border-radius:4px; border:1px solid #27ae60; background:#eafaf1; color:#1e8449; cursor:pointer; font-weight:600; }
-.add-user-btn:hover { background:#27ae60; color:#fff; }
-.save-settings-btn { width:100%; padding:8px; background:#0d2b55; color:#fff; border:none; border-radius:5px; font-size:12px; font-weight:700; cursor:pointer; margin-top:8px; }
-.save-settings-btn:hover { background:#1a3f72; }
-
-
-/* USER PROFILE MODAL */
-.user-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:600;align-items:center;justify-content:center}
-.user-modal-overlay.show{display:flex}
-.user-modal-box{background:#fff;border-radius:12px;width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25)}
-.user-modal-header{background:#0d2b55;color:#fff;padding:16px 20px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between}
-.user-modal-header h3{font-size:14px;font-weight:700}
-.user-modal-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1}
-.user-modal-body{padding:20px}
-.uf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.uf-row.full{grid-template-columns:1fr}
-.uf-field label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:3px}
-.uf-field input,.uf-field select{width:100%;border:1px solid #ccc;border-radius:4px;padding:6px 9px;font-size:12px}
-.uf-field input:focus,.uf-field select:focus{border-color:#1a5276;outline:none}
-.uf-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#888;border-bottom:1px solid #eee;padding-bottom:4px;margin:14px 0 10px}
-.uf-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid #eee}
-.activation-preview{background:#f4f6f9;border:1px solid #dde2e8;border-radius:6px;padding:12px;margin-top:10px;font-size:11px;color:#333;line-height:1.6;white-space:pre-wrap;font-family:monospace}
-.mailto-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#27ae60;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;margin-top:8px}
-.mailto-btn:hover{background:#219150}
-.copy-link-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#2471a3;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;margin-top:8px;margin-left:6px}
-.copy-link-btn:hover{background:#1a5276}
-
-/* AUDIT LOG */
-.audit-panel{margin:0 28px 20px;border:1px solid #dde2e8;border-radius:6px;overflow:hidden}
-.audit-header{background:#1a1a2e;color:#fff;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
-.audit-header h4{font-size:12px;font-weight:600}
-.audit-toggle{font-size:11px;color:rgba(255,255,255,0.6)}
-.audit-body{display:none;max-height:220px;overflow-y:auto}
-.audit-body.open{display:block}
-.audit-table{width:100%;border-collapse:collapse;font-size:11px}
-.audit-table th{background:#f4f6f9;padding:5px 10px;text-align:left;font-weight:600;color:#555;border-bottom:1px solid #dde2e8;white-space:nowrap}
-.audit-table td{padding:5px 10px;border-bottom:1px solid #f0f0f0;color:#333;vertical-align:top}
-.audit-table tr:last-child td{border-bottom:none}
-.audit-table tr:hover td{background:#f9f9f9}
-.audit-empty{padding:16px;text-align:center;color:#aaa;font-size:11px}
-.log-g{color:#27ae60;font-weight:700} .log-y{color:#e67e22;font-weight:700}
-.log-r{color:#e74c3c;font-weight:700} .log-b{color:#aaa}
-.audit-export-btn{font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid #aaa;background:#f5f5f5;cursor:pointer}
-.audit-export-btn:hover{background:#e0e0e0}
-
-/* USER ACTIVITY LOG in settings */
-.activity-log{max-height:180px;overflow-y:auto;font-size:11px;background:#f9f9f9;border:1px solid #eee;border-radius:4px;padding:8px 10px}
-.activity-log .al-row{padding:3px 0;border-bottom:1px solid #f0f0f0;color:#555;line-height:1.4}
-.activity-log .al-row:last-child{border-bottom:none}
-.activity-log .al-time{color:#aaa;font-size:10px;margin-right:6px}
-.activity-log .al-user{font-weight:700;color:#1a5276;margin-right:4px}
-.al-empty{color:#aaa;font-style:italic}
-
-/* FOOTER */
 .footer{padding:9px 28px;background:#f4f6f9;border-top:1px solid #dde2e8;font-size:10px;color:#999;display:flex;justify-content:space-between}
-
-@media print{
-  body{background:#fff}
-  .page{box-shadow:none;margin:0;border-radius:0}
-  .controls,.planb-banner,.kr-actions,.obj-btn,.obj-del-btn,.add-kr-btn{display:none!important}
-  .table-wrap{padding:0 12px 12px}
-}
+@media print{body{background:#fff}.page{box-shadow:none;margin:0;border-radius:0}.controls,.planb-banner,.kr-actions,.login-overlay,.settings-overlay,.tabs{display:none!important}.tab-content{display:block!important}.table-wrap{padding:0 12px 12px}}
 </style>
 </head>
 <body>
 <div class="page">
 
-<!-- HEADER -->
 <div class="header">
   <div class="header-left">
-    <h1 id="headerTitle">OKR 13-Week Scorecard &nbsp;<span style="font-size:11px;font-weight:600;background:#27ae60;color:#fff;padding:2px 8px;border-radius:10px;vertical-align:middle;letter-spacing:0.5px">LIVE</span></h1>
-    <p id="headerSub">Update weekly every Monday · One source of truth</p>
+    <h1>Mober OKR &nbsp;<span style="font-size:11px;font-weight:600;background:#27ae60;color:#fff;padding:2px 8px;border-radius:10px;vertical-align:middle">LIVE</span></h1>
+    <p id="headerSub">Update weekly every Monday &middot; One source of truth</p>
   </div>
-  <div class="header-right" style="display:flex;align-items:center;gap:12px;">
-    <div style="text-align:right">
-      <strong id="headerProgram">—</strong><br>
-      <span id="headerPeriod">—</span>
+  <div class="header-right">
+    <span class="sync-indicator sync-ok" id="syncStatus">&#9679; Connected</span>
+    <div class="header-info">
+      <strong id="headerProgram">Mober Core OKR</strong>
+      <span id="headerPeriod">&mdash;</span>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-      <button class="role-badge rb-viewer" id="roleBadge" onclick="openLogin()">&#128100; Viewer</button>
-      <button onclick="openSettings()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:18px;line-height:1;" title="Settings">&#9881;</button>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <button class="role-badge rb-viewer" id="roleBadge" onclick="openLogin()">&#128274; Sign In</button>
+      <button class="gear-btn" id="gearBtn" onclick="openSettings()">&#9881;</button>
     </div>
   </div>
 </div>
 
-<!-- LEGEND -->
-<div class="legend">
-  <span style="font-weight:600;font-size:11px;color:#333">Status:</span>
-  <div class="legend-item"><div class="ld ld-g">G</div>On track</div>
-  <div class="legend-item"><div class="ld ld-y">Y</div>At risk</div>
-  <div class="legend-item"><div class="ld ld-r">R</div>Off track</div>
-  <div class="legend-item"><div class="ld ld-b">—</div>Not started</div>
-  <div class="legend-item"><div class="ld ld-p">P</div>Plan B</div>
-  <span style="font-size:11px;color:#888;margin-left:8px">· Click any RAG cell to update · Click objective/KR text to edit</span>
-  <span class="legend-right">Last saved: <span id="lastSaved">never</span></span>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('dashboard',this)">&#128200; Dashboard</div>
+  <div class="tab" onclick="switchTab('scorecard',this)">&#128203; Scorecard</div>
+  <div class="tab" onclick="switchTab('audit',this)">&#128196; Audit Trail</div>
 </div>
 
-<!-- CONTROLS -->
-<input type="hidden" id="programName" value="Mober Core OKR" />
-<div class="controls" id="adminControls">
-  <span style="font-size:11px;color:#888" id="periodDisplay">Set start date in &#9881; Settings</span>
-  <div class="ctrl-sep"></div>
-  <button class="btn btn-orange" id="btnAddObj" onclick="addObjective()">+ Add Objective</button>
-  <button class="btn btn-navy" onclick="saveToStorage()">&#128190; Save</button>
-  <button class="btn btn-green" onclick="window.print()">&#128424; Print / PDF</button>
-  <button class="btn" onclick="exportCSV()">&#8595; CSV</button>
-  <button class="btn" onclick="exportJSON()">&#8595; Backup JSON</button>
-  <button class="btn" onclick="document.getElementById('importFile').click()">&#8593; Restore JSON</button>
-  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)" />
-  <button class="btn" id="btnResetCells" onclick="resetCells()" style="color:#856404;border-color:#f0c040;background:#fffde7">&#8635; Reset Cells</button>
-  <button class="btn" id="btnResetAll" onclick="resetAll()" style="color:#c0392b">&#8635; Reset All</button>
-</div>
-
-<!-- PLAN B BANNER -->
-<div class="planb-banner" id="planbBanner">
-  <h2>&#9888; PLAN B ALERT — Sustained red flags detected in W1–W5</h2>
-  <p>3 or more Key Results are tracking Red for 3+ weeks. OKR achievement is at risk. W6–W7 cells are flagged purple (P). Review corrective actions before proceeding.</p>
-  <div class="planb-grid">
-    <div class="planb-card"><h4>OBJ-1 · Revenue</h4><ul>
-      <li>Re-forecast Q4 target with CFO</li><li>Double outreach cadence</li>
-      <li>Review MLP enrollment blockers</li><li>Emergency pipeline review</li>
-    </ul></div>
-    <div class="planb-card"><h4>OBJ-2a · Funding</h4><ul>
-      <li>Fast-track valuation — hard deadline</li><li>Identify bridge funding options</li>
-      <li>Escalate to board / advisors</li><li>Compress due diligence timeline</li>
-    </ul></div>
-    <div class="planb-card"><h4>OBJ-2b · Marketability</h4><ul>
-      <li>Review driver income incentives</li><li>Add recruitment sprint</li>
-      <li>Root-cause attrition analysis</li><li>Partner with driving schools</li>
-    </ul></div>
-    <div class="planb-card"><h4>OBJ-3 · Culture</h4><ul>
-      <li>Expedite KPI framework</li><li>Add mandatory training block/month</li>
-      <li>Pause non-critical hiring</li><li>Revenue-per-person review</li>
-    </ul></div>
-    <div class="planb-card"><h4>OBJ-4&5 · Ops + Speed</h4><ul>
-      <li>Freeze non-critical tech changes</li><li>Cap deliveries-per-employee</li>
-      <li>Client feedback loop — weekly</li><li>Assign delivery speed owner</li>
-    </ul></div>
+<!-- DASHBOARD TAB -->
+<div class="tab-content active" id="tab-dashboard">
+  <div class="dashboard">
+    <div class="dash-grid" id="dashMetrics"></div>
+    <div class="obj-progress-wrap">
+      <h3>Objective progress</h3>
+      <div id="objProgressCards"></div>
+    </div>
+    <div class="week-heatmap">
+      <h3>Weekly heatmap &mdash; all KRs</h3>
+      <div class="heatmap-grid" id="heatmapGrid"></div>
+      <div class="legend-row">
+        <span><span class="ldot" style="background:#27ae60"></span>On track</span>
+        <span><span class="ldot" style="background:#f39c12"></span>At risk</span>
+        <span><span class="ldot" style="background:#e74c3c"></span>Off track</span>
+        <span><span class="ldot" style="background:#e0e0e0"></span>Not started</span>
+      </div>
+    </div>
   </div>
-  <span class="planb-dismiss" onclick="dismissPlanB()">Dismiss — corrective actions reviewed and assigned</span>
 </div>
 
-<!-- TABLE -->
-<div class="table-wrap">
-<table id="scorecard">
-<thead>
-<tr>
-  <th class="kpi-h">Objective / Key Result &nbsp;·&nbsp; KPI Tracked</th>
-  <th class="wt-h">Wt</th>
-  <th class="wk-h" id="wh0">W1</th><th class="wk-h" id="wh1">W2</th>
-  <th class="wk-h" id="wh2">W3</th><th class="wk-h" id="wh3">W4</th>
-  <th class="wk-h" id="wh4">W5</th><th class="wk-h w6-th" id="wh5" title="Week 6 — Plan B activation gate">W6 &#9733;</th>
-  <th class="wk-h" id="wh6">W7</th><th class="wk-h" id="wh7">W8</th>
-  <th class="wk-h" id="wh8">W9</th><th class="wk-h" id="wh9">W10</th>
-  <th class="wk-h" id="wh10">W11</th><th class="wk-h" id="wh11">W12</th>
-  <th class="wk-h" id="wh12">W13</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
-</div>
-
-<!-- FOOTER -->
-
-<!-- AUDIT LOG PANEL -->
-<div class="audit-panel" id="auditPanel">
-  <div class="audit-header" onclick="toggleAudit()">
-    <h4>&#128196; Audit Trail — Cell Change History</h4><button class="audit-export-btn" onclick="event.stopPropagation();exportAuditCSV()">&#8595; Export</button>
-    <span class="audit-toggle" id="auditToggleLabel">Show &#9660;</span>
+<!-- SCORECARD TAB -->
+<div class="tab-content" id="tab-scorecard">
+  <div class="legend">
+    <span style="font-weight:600;font-size:11px;color:#333">Status:</span>
+    <div class="legend-item"><div class="ld ld-g">G</div>On track</div>
+    <div class="legend-item"><div class="ld ld-y">Y</div>At risk</div>
+    <div class="legend-item"><div class="ld ld-r">R</div>Off track</div>
+    <div class="legend-item"><div class="ld ld-b">&mdash;</div>Not started</div>
+    <div class="legend-item"><div class="ld ld-p">P</div>Plan B</div>
+    <span class="legend-right">Last synced: <span id="lastSaved">never</span></span>
   </div>
-  <div class="audit-body" id="auditBody">
-    <div id="auditContent"><div class="audit-empty">No changes recorded yet.</div></div>
+  <div class="controls">
+    <input type="hidden" id="programName" value="Mober Core OKR" />
+    <span id="periodDisplay" style="font-size:11px;color:#888">Set start date in &#9881; Settings</span>
+    <div class="ctrl-sep"></div>
+    <button class="btn btn-orange" id="btnAddObj" onclick="addObjective()" style="display:none">+ Objective</button>
+    <button class="btn btn-green" onclick="window.print()">&#128424; Print</button>
+    <button class="btn" onclick="exportCSV()">&#8595; CSV</button>
+    <button class="btn" onclick="exportJSON()">&#8595; Backup</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">&#8593; Restore</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)" />
+    <button class="btn" id="btnResetCells" onclick="resetCells()" style="display:none;color:#856404;border-color:#f0c040;background:#fffde7">&#8635; Reset Cells</button>
+    <button class="btn" id="btnResetAll" onclick="resetAll()" style="display:none;color:#c0392b">&#8635; Reset All</button>
+  </div>
+  <div class="planb-banner" id="planbBanner">
+    <h2>&#9888; PLAN B ALERT &mdash; Sustained red flags in W1&ndash;W5</h2>
+    <p>3+ Key Results tracking Red for 3+ weeks. W6 flagged purple. Review corrective actions.</p>
+    <div class="planb-grid">
+      <div class="planb-card"><h4>OBJ-1 Revenue</h4><ul><li>Re-forecast Q4 with CFO</li><li>Double outreach cadence</li><li>Review MLP blockers</li><li>Emergency pipeline review</li></ul></div>
+      <div class="planb-card"><h4>OBJ-2a Funding</h4><ul><li>Fast-track valuation</li><li>Identify bridge funding</li><li>Escalate to board</li><li>Compress due diligence</li></ul></div>
+      <div class="planb-card"><h4>OBJ-2b Marketability</h4><ul><li>Review driver incentives</li><li>Add recruitment sprint</li><li>Root-cause attrition</li><li>Partner driving schools</li></ul></div>
+      <div class="planb-card"><h4>OBJ-3 Culture</h4><ul><li>Expedite KPI framework</li><li>Add mandatory training</li><li>Pause non-critical hiring</li><li>Revenue-per-person review</li></ul></div>
+      <div class="planb-card"><h4>OBJ-4&5 Ops+Speed</h4><ul><li>Freeze non-critical tech</li><li>Cap deliveries/employee</li><li>Client feedback weekly</li><li>Assign speed owner</li></ul></div>
+    </div>
+    <span class="planb-dismiss" onclick="dismissPlanB()">Dismiss &mdash; corrective actions reviewed</span>
+  </div>
+  <div class="table-wrap">
+    <table id="scorecard"><thead><tr>
+      <th class="kpi-h">Objective / Key Result &middot; KPI</th><th class="wt-h">Wt</th>
+      <th class="wk-h" id="wh0">W1</th><th class="wk-h" id="wh1">W2</th><th class="wk-h" id="wh2">W3</th><th class="wk-h" id="wh3">W4</th><th class="wk-h" id="wh4">W5</th>
+      <th class="wk-h w6-th" id="wh5" title="Week 6 &mdash; Plan B gate">W6&#9733;</th>
+      <th class="wk-h" id="wh6">W7</th><th class="wk-h" id="wh7">W8</th><th class="wk-h" id="wh8">W9</th><th class="wk-h" id="wh9">W10</th><th class="wk-h" id="wh10">W11</th><th class="wk-h" id="wh11">W12</th><th class="wk-h" id="wh12">W13</th>
+    </tr></thead><tbody id="tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- AUDIT TAB -->
+<div class="tab-content" id="tab-audit">
+  <div style="padding:20px 28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="font-size:14px;font-weight:700;color:#0d2b55">Audit Trail &mdash; All Changes</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="loadAuditFromDB()">&#8635; Refresh</button>
+        <button class="btn" onclick="exportAuditCSV()">&#8595; Export CSV</button>
+      </div>
+    </div>
+    <div id="auditFullContent"><div class="audit-empty">Loading...</div></div>
   </div>
 </div>
 
 <div class="footer">
-  <span>OKR Tracking · Internal · Updated weekly every Monday</span>
-  <span>One source of truth &nbsp;&middot;&nbsp; <span id="footerProgram">—</span> &nbsp;&middot;&nbsp; <span id="footerPeriod">—</span></span>
+  <span>Mober Technology Pte. Inc. &middot; Powered by Supabase</span>
+  <span>One source of truth &middot; <span id="footerProgram">Mober Core OKR</span> &middot; <span id="footerPeriod">&mdash;</span></span>
 </div>
 </div>
 
-
-<!-- LOGIN OVERLAY -->
+<!-- LOGIN -->
 <div class="login-overlay hidden" id="loginOverlay">
   <div class="login-box">
-    <h3 id="loginTitle">&#128274; Sign In</h3>
-    <p>Select your name and enter your PIN to continue.</p>
-    <div class="login-field">
-      <label>Name</label>
-      <select id="loginUser"></select>
-    </div>
-    <div class="login-field">
-      <label>PIN</label>
-      <input type="password" id="loginPin" placeholder="Enter PIN" onkeydown="if(event.key==='Enter')doLogin()" />
-    </div>
+    <h3>&#128274; Sign In</h3>
+    <p>Select your name and enter your 6-digit PIN.</p>
+    <div class="login-field"><label>Name</label><select id="loginUser"></select></div>
+    <div class="login-field"><label>PIN</label><input type="password" id="loginPin" placeholder="6-digit PIN" maxlength="6" onkeydown="if(event.key==='Enter')doLogin()" /></div>
     <div class="login-error" id="loginError"></div>
     <div class="login-actions">
       <button class="btn" onclick="closeLogin()">Cancel</button>
@@ -365,114 +370,70 @@ tr.score-row td.w6-col{border-left:2px solid #e67e22!important;border-right:2px 
   </div>
 </div>
 
-<!-- SETTINGS DRAWER -->
+<!-- SETTINGS -->
 <div class="settings-overlay" id="settingsOverlay" onclick="closeSettings(event)">
   <div class="settings-drawer" onclick="event.stopPropagation()">
-    <div class="settings-header">
-      <h2>&#9881; Settings</h2>
-      <button class="settings-close" onclick="closeSettings()">&#10005;</button>
-    </div>
+    <div class="settings-header"><h2>&#9881; Settings</h2><button class="settings-close" onclick="closeSettings()">&#10005;</button></div>
     <div class="settings-body">
-
       <div class="settings-section">
         <h4>Program</h4>
-        <div class="settings-row">
-          <label>Program name</label>
-          <input type="text" id="sProgramName" value="Mober Core OKR" oninput="liveUpdateHeader()" />
-        </div>
-        <div class="settings-row">
-          <label>Start date (computes 13 weeks)</label>
-          <input type="date" id="sStartDate" onchange="liveComputePeriod()" />
-        </div>
-        <div class="settings-row">
-          <label>End date (auto)</label>
-          <input type="text" id="sEndDate" readonly style="background:#f5f5f5;color:#888" />
-        </div>
+        <div class="settings-row"><label>Program name</label><input type="text" id="sProgramName" value="Mober Core OKR" oninput="liveUpdateHeader()" /></div>
+        <div class="settings-row"><label>Start date</label><input type="date" id="sStartDate" onchange="liveComputePeriod()" /></div>
+        <div class="settings-row"><label>End date (auto)</label><input type="text" id="sEndDate" readonly style="background:#f5f5f5;color:#888" /></div>
       </div>
-
       <div class="settings-section">
         <h4>Plan B</h4>
-        <div class="settings-row">
-          <label>Trigger: KRs red for at least N weeks (W1–W5)</label>
-          <input type="number" id="sPlanBThreshold" value="3" min="1" max="5" />
-        </div>
-        <div class="settings-row">
-          <label>Gate week label</label>
-          <input type="text" id="sPlanBLabel" value="Plan B" />
-        </div>
-        <div class="toggle-row">
-          <label>Show Plan B banner to Viewers</label>
-          <label class="toggle"><input type="checkbox" id="sPlanBViewers" checked /><span class="toggle-slider"></span></label>
-        </div>
+        <div class="settings-row"><label>Trigger: KRs red for N weeks in W1&ndash;W5</label><input type="number" id="sPlanBThreshold" value="3" min="1" max="5" /></div>
+        <div class="toggle-row"><label>Show Plan B banner to all roles</label><label class="toggle"><input type="checkbox" id="sPlanBAll" checked /><span class="toggle-slider"></span></label></div>
       </div>
-
       <div class="settings-section">
         <h4>Display</h4>
-        <div class="toggle-row">
-          <label>Show corrective actions in banner</label>
-          <label class="toggle"><input type="checkbox" id="sShowActions" checked /><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <label>Show weekly health score row</label>
-          <label class="toggle"><input type="checkbox" id="sShowScore" checked /><span class="toggle-slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <label>Show KPI sub-label on each row</label>
-          <label class="toggle"><input type="checkbox" id="sShowKpi" checked /><span class="toggle-slider"></span></label>
-        </div>
+        <div class="toggle-row"><label>Show corrective actions</label><label class="toggle"><input type="checkbox" id="sShowActions" checked /><span class="toggle-slider"></span></label></div>
+        <div class="toggle-row"><label>Show weekly health score row</label><label class="toggle"><input type="checkbox" id="sShowScore" checked /><span class="toggle-slider"></span></label></div>
+        <div class="toggle-row"><label>Show KPI sub-label</label><label class="toggle"><input type="checkbox" id="sShowKpi" checked /><span class="toggle-slider"></span></label></div>
       </div>
-
       <div class="settings-section" id="userSection">
         <h4>Users &amp; Roles</h4>
         <table class="user-table" id="userTable">
-          <thead><tr><th>Name</th><th>Role</th><th>PIN</th><th></th></tr></thead>
+          <thead><tr><th>Name</th><th>Role</th><th>Dept</th><th>Email</th><th></th></tr></thead>
           <tbody id="userTableBody"></tbody>
         </table>
-        <button class="add-user-btn" onclick="addUserRow()">+ Add User</button>
+        <button class="add-user-btn" onclick="openAddUserModal()">+ Add User</button>
       </div>
-
+      <div class="settings-section" id="activityLogSection">
+        <h4>Activity Log <span style="float:right;font-weight:400;font-size:10px;cursor:pointer;color:#2471a3" onclick="exportActivityCSV()">&#8595; Export</span></h4>
+        <div class="activity-log" id="activityLogContent"><div class="al-empty">No activity yet.</div></div>
+      </div>
       <button class="save-settings-btn" onclick="saveSettings()">&#10003; Apply &amp; Close</button>
     </div>
   </div>
 </div>
 
-
-<!-- USER PROFILE MODAL -->
-<div class="user-modal-overlay" id="userProfileModal">
-  <div class="user-modal-box">
-    <div class="user-modal-header">
-      <h3 id="userModalTitle">&#128100; Add User</h3>
-      <button class="user-modal-close" onclick="closeUserModal()">&#10005;</button>
-    </div>
-    <div class="user-modal-body">
+<!-- ADD USER MODAL -->
+<div class="umodal-overlay" id="userProfileModal">
+  <div class="umodal-box">
+    <div class="umodal-hdr"><h3>&#128100; Add User</h3><button class="umodal-close" onclick="closeUserModal()">&#10005;</button></div>
+    <div class="umodal-body">
       <div class="uf-section-title">Personal Details</div>
       <div class="uf-row">
-        <div class="uf-field"><label>First Name *</label><input type="text" id="uf_first" placeholder="First name" /></div>
-        <div class="uf-field"><label>Last Name *</label><input type="text" id="uf_last" placeholder="Last name" /></div>
+        <div class="uf-field"><label>First Name *</label><input type="text" id="uf_first" placeholder="First name" oninput="updateActivationPreview()" /></div>
+        <div class="uf-field"><label>Last Name</label><input type="text" id="uf_last" placeholder="Last name" /></div>
       </div>
       <div class="uf-row">
-        <div class="uf-field"><label>Email Address *</label><input type="email" id="uf_email" placeholder="name@mober.com" /></div>
+        <div class="uf-field"><label>Email *</label><input type="email" id="uf_email" placeholder="name@mober.com" oninput="updateActivationPreview()" /></div>
         <div class="uf-field"><label>Mobile</label><input type="text" id="uf_mobile" placeholder="+63 9XX XXX XXXX" /></div>
       </div>
       <div class="uf-row">
-        <div class="uf-field">
-          <label>Department</label>
-          <select id="uf_dept">
-            <option value="">— Select —</option>
-            <option>Operations</option>
-            <option>Fleet</option>
-            <option>Workforce</option>
-            <option>Commercial</option>
-            <option>Finance</option>
-            <option>HR &amp; People</option>
-            <option>Technology</option>
-            <option>Logistics</option>
-            <option>Executive</option>
+        <div class="uf-field"><label>Department</label>
+          <select id="uf_dept" onchange="updateActivationPreview()">
+            <option value="">Select</option>
+            <option>Operations</option><option>Fleet</option><option>Workforce</option>
+            <option>Commercial</option><option>Finance</option><option>HR &amp; People</option>
+            <option>Technology</option><option>Logistics</option><option>Executive</option>
           </select>
         </div>
-        <div class="uf-field">
-          <label>Role</label>
-          <select id="uf_role">
+        <div class="uf-field"><label>Role</label>
+          <select id="uf_role" onchange="updateActivationPreview()">
             <option value="viewer">Viewer</option>
             <option value="editor">Editor</option>
             <option value="admin">Admin</option>
@@ -480,17 +441,13 @@ tr.score-row td.w6-col{border-left:2px solid #e67e22!important;border-right:2px 
         </div>
       </div>
       <div class="uf-row">
-        <div class="uf-field"><label>PIN (4 digits)</label><input type="password" id="uf_pin" placeholder="e.g. 1234" maxlength="8" /></div>
-        <div class="uf-field"><label>Confirm PIN</label><input type="password" id="uf_pin2" placeholder="Repeat PIN" maxlength="8" /></div>
+        <div class="uf-field"><label>PIN (6 digits) *</label><input type="password" id="uf_pin" placeholder="6-digit PIN" maxlength="6" /></div>
+        <div class="uf-field"><label>Confirm PIN</label><input type="password" id="uf_pin2" placeholder="Repeat PIN" maxlength="6" /></div>
       </div>
-
       <div class="uf-section-title">Activation Email Preview</div>
-      <div class="activation-preview" id="activationPreview">Fill in the details above to preview the activation email.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <a class="mailto-btn" id="mailtoBtn" href="#" onclick="return sendActivationEmail()">&#9993; Open in Mail App</a>
-        <button class="copy-link-btn" onclick="copyActivationText()">&#128203; Copy Message</button>
-      </div>
-      <div id="uf_error" style="color:#e74c3c;font-size:11px;margin-top:8px;min-height:16px"></div>
+      <div class="activation-preview" id="activationPreview">Fill in details above to preview.</div>
+      <div><button class="mailto-btn" onclick="sendActivationEmail()">&#9993; Open in Mail App</button><button class="copy-btn" onclick="copyActivationText()">&#128203; Copy</button></div>
+      <div class="uf-error" id="uf_error"></div>
       <div class="uf-actions">
         <button class="btn" onclick="closeUserModal()">Cancel</button>
         <button class="btn btn-navy" onclick="saveUserProfile()">&#10003; Save User</button>
@@ -500,27 +457,20 @@ tr.score-row td.w6-col{border-left:2px solid #e67e22!important;border-right:2px 
 </div>
 
 <!-- CELL MODAL -->
-<div class="modal-overlay" id="cellModal" onclick="closeCellModal(event)">
-  <div class="modal-box" onclick="event.stopPropagation()">
+<div class="cmodal-overlay" id="cellModal" onclick="closeCellModal(event)">
+  <div class="cmodal-box" onclick="event.stopPropagation()">
     <h3 id="cellModalTitle">Update Status</h3>
-    <div class="modal-sub" id="cellModalSub"></div>
-    <div class="modal-field">
-      <label>Status</label>
+    <div class="cmodal-sub" id="cellModalSub"></div>
+    <div class="modal-field"><label>Status</label>
       <select id="cellStatus">
-        <option value="g">G — On track</option>
-        <option value="y">Y — At risk</option>
-        <option value="r">R — Off track</option>
-        <option value="b">— Not started / N/A</option>
+        <option value="g">G &mdash; On track</option>
+        <option value="y">Y &mdash; At risk</option>
+        <option value="r">R &mdash; Off track</option>
+        <option value="b">&mdash; Not started / N/A</option>
       </select>
     </div>
-    <div class="modal-field">
-      <label>Actual value (optional)</label>
-      <input type="text" id="cellVal" placeholder="e.g. 45 accounts, 12%, 280k…" />
-    </div>
-    <div class="modal-field">
-      <label>Notes</label>
-      <input type="text" id="cellNotes" placeholder="Add context or blocker…" />
-    </div>
+    <div class="modal-field"><label>Actual value (optional)</label><input type="text" id="cellVal" placeholder="e.g. 45 accounts, 12%, 280k" /></div>
+    <div class="modal-field"><label>Notes</label><input type="text" id="cellNotes" placeholder="Add context or blocker" /></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeCellModal()">Cancel</button>
       <button class="btn btn-navy" onclick="saveCellModal()">Save</button>
@@ -529,1114 +479,498 @@ tr.score-row td.w6-col{border-left:2px solid #e67e22!important;border-right:2px 
 </div>
 
 <script>
-// ─── DEFAULT DATA ─────────────────────────────────────────────────────────────
+var SUPABASE_URL = 'https://tojxilkmmraniwhmzowe.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_wY8njjIwHfonuJUv83BB7A_nMEWn402';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 var DEFAULT_OBJECTIVES = [
-  {
-    id:'OBJ-1', label:'Hit company revenue target — $X million this year, $Y million Q4 FY21-22',
-    krs:[
-      {id:'KR-1.1',label:'Add new clients to reach 800 total accounts by Q4',kpi:'New monthly accounts added',wt:'30%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-1.2',label:'2 deliveries/account/day by end 2021, 10/account/day Q4',kpi:'Avg deliveries per account per day',wt:'40%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-1.3',label:'Merchandise Loyalty Program expansion — enroll XX accounts/week',kpi:'New accounts from MLP per month',wt:'10%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-1.4',label:'"One Town – One Mober" initiative progress by end 2021',kpi:'Milestone completion % (0 to 100%)',wt:'20%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-    ]
-  },
-  {
-    id:'OBJ-2a', label:'Raise $1M in 2 months; secure $4M total funding by end of April 2022',
-    krs:[
-      {id:'KR-2a.1',label:'Complete valuation by early April 2022 covering all depts and growth areas',kpi:'Valuation completion milestone',wt:'100%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-    ]
-  },
-  {
-    id:'OBJ-2b', label:'Increase Mober marketability (partners, drivers) to support customer growth',
-    krs:[
-      {id:'KR-2b.1',label:'Daily driver income increases XX% monthly for continuous partnership',kpi:'Growth in avg daily driver income (%)',wt:'40%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-2b.2',label:'Onboard XX drivers/month to match booking growth',kpi:'Newly added drivers and retention rate',wt:'50%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-2b.3',label:'Driver attrition rate down to target XX%',kpi:'Avg monthly attrition rate',wt:'10%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-    ]
-  },
-  {
-    id:'OBJ-3', label:'Create an exceptional corporate culture for all people (employees / freelancers / consultants)',
-    krs:[
-      {id:'KR-3.1',label:'KPI achievement framework — link performance to direct rewards',kpi:'KPI finalisation and evaluation milestones',wt:'10%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-3.2',label:'Product trainings and initiatives to improve employee productivity',kpi:'No. of trainings x avg employees attending',wt:'40%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-3.3',label:'Evaluate sales team expansion — set revenue-per-person thresholds',kpi:'Revenue brought in per person (bookings)',wt:'30%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-3.4',label:'Timely upskilling via external/internal experts — talks and trainings',kpi:'No. of trainings attended per employee',wt:'20%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-    ]
-  },
-  {
-    id:'OBJ-4', label:'Improve tech and HR capabilities to avoid demand-supply mismatch',
-    krs:[
-      {id:'KR-4.1',label:'Expand sub-teams across hubs — stable ratio of employees to deliveries per account',kpi:'Deliveries per employee (target: 10k to 8k)',wt:'100%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-    ]
-  },
-  {
-    id:'OBJ-5', label:'Increase delivery speed by XX% in next 3 months by end of 2021',
-    krs:[
-      {id:'KR-5.1',label:'Engage and incorporate feedback from current clients',kpi:'Clients giving feedback and implementations',wt:'60%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-5.2',label:'Identify delivery roadblocks from feedback via dedicated tracking',kpi:'Increase in deliveries and delivery speed',wt:'20%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-      {id:'KR-5.3',label:'Enhance system features and increase client awareness',kpi:'Client feature awareness score (feedback)',wt:'20%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
-    ]
-  },
+  {id:'OBJ-1',label:'Hit company revenue target — $X million this year, $Y million Q4 FY21-22',krs:[
+    {id:'KR-1.1',label:'Add new clients to reach 800 total accounts by Q4',kpi:'New monthly accounts added',wt:'30%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-1.2',label:'2 deliveries/account/day by end 2021, 10/account/day Q4',kpi:'Avg deliveries per account per day',wt:'40%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-1.3',label:'Merchandise Loyalty Program — enroll XX accounts/week',kpi:'New accounts from MLP per month',wt:'10%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-1.4',label:'"One Town – One Mober" initiative progress by end 2021',kpi:'Milestone completion %',wt:'20%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+  ]},
+  {id:'OBJ-2a',label:'Raise $1M in 2 months; secure $4M total funding by end of April 2022',krs:[
+    {id:'KR-2a.1',label:'Complete valuation by early April 2022 covering all depts',kpi:'Valuation completion milestone',wt:'100%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+  ]},
+  {id:'OBJ-2b',label:'Increase Mober marketability (partners, drivers) to support customer growth',krs:[
+    {id:'KR-2b.1',label:'Daily driver income increases XX% monthly',kpi:'Growth in avg daily driver income (%)',wt:'40%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-2b.2',label:'Onboard XX drivers/month to match booking growth',kpi:'Newly added drivers and retention rate',wt:'50%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-2b.3',label:'Driver attrition rate down to target XX%',kpi:'Avg monthly attrition rate',wt:'10%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+  ]},
+  {id:'OBJ-3',label:'Create an exceptional corporate culture for all people',krs:[
+    {id:'KR-3.1',label:'KPI achievement framework — link performance to direct rewards',kpi:'KPI finalisation milestones',wt:'10%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-3.2',label:'Product trainings and initiatives to improve productivity',kpi:'No. of trainings x avg employees attending',wt:'40%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-3.3',label:'Evaluate sales team expansion — set revenue-per-person thresholds',kpi:'Revenue per person (bookings)',wt:'30%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-3.4',label:'Timely upskilling via external/internal experts',kpi:'No. of trainings attended per employee',wt:'20%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+  ]},
+  {id:'OBJ-4',label:'Improve tech and HR capabilities to avoid demand-supply mismatch',krs:[
+    {id:'KR-4.1',label:'Expand sub-teams across hubs — stable ratio of employees to deliveries',kpi:'Deliveries per employee (target: 10k to 8k)',wt:'100%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+  ]},
+  {id:'OBJ-5',label:'Increase delivery speed by XX% in next 3 months by end of 2021',krs:[
+    {id:'KR-5.1',label:'Engage and incorporate feedback from current clients',kpi:'Clients giving feedback and implementations',wt:'60%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-5.2',label:'Identify delivery roadblocks via dedicated tracking',kpi:'Increase in deliveries and delivery speed',wt:'20%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+    {id:'KR-5.3',label:'Enhance system features and increase client awareness',kpi:'Client feature awareness score',wt:'20%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']},
+  ]},
 ];
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
 var objectives = JSON.parse(JSON.stringify(DEFAULT_OBJECTIVES));
-var cellData = {};   // { krId: { w0:'g', v0:'', n0:'' ... } }
-var cellEditTarget = null;
-var planbDismissed = false;
-var objCounter = DEFAULT_OBJECTIVES.length;
-var krCounters = {};
-
-function getCellState(krId, w) {
-  var k = cellData[krId] || {};
-  return { status: k['w'+w]||null, val: k['v'+w]||'', note: k['n'+w]||'' };
-}
-function setCellState(krId, w, status, val, note) {
-  if (!cellData[krId]) cellData[krId] = {};
-  cellData[krId]['w'+w] = status;
-  cellData[krId]['v'+w] = val;
-  cellData[krId]['n'+w] = note;
-}
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-function sCls(s) { return s==='g'?'wg':s==='y'?'wy':s==='r'?'wr':'wb'; }
-function sLbl(s) { return s==='g'?'G':s==='y'?'Y':s==='r'?'R':'—'; }
-function esc(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// ─── HEADER / PERIOD ─────────────────────────────────────────────────────────
-function updateHeader() {
-  var prog = document.getElementById('programName').value || '—';
-  document.getElementById('headerTitle').textContent = prog + ' · OKR 13-Week Scorecard';
-  document.getElementById('headerProgram').textContent = prog;
-  document.getElementById('footerProgram').textContent = prog;
-}
-
-function computePeriod() {
-  var sd = document.getElementById('startDate').value;
-  if (!sd) { document.getElementById('endDateDisplay').textContent = '—'; document.getElementById('headerPeriod').textContent = '—'; document.getElementById('footerPeriod').textContent = '—'; updateWeekHeaders(null); return; }
-  var start = new Date(sd + 'T00:00:00');
-  var end = new Date(start.getTime() + 12 * 7 * 24 * 60 * 60 * 1000);
-  var opts = { year:'numeric', month:'short', day:'numeric' };
-  var endStr = end.toLocaleDateString('en-US', opts);
-  var startStr = start.toLocaleDateString('en-US', opts);
-  document.getElementById('endDateDisplay').textContent = endStr;
-  var periodStr = startStr + ' – ' + endStr;
-  document.getElementById('headerPeriod').textContent = periodStr;
-  document.getElementById('footerPeriod').textContent = periodStr;
-  updateWeekHeaders(start);
-}
-
-function updateWeekHeaders(start) {
-  for (var w = 0; w < 13; w++) {
-    var th = document.getElementById('wh' + w);
-    if (!th) continue;
-    if (!start) {
-      th.innerHTML = (w===5 ? 'W6 &#9733;' : 'W'+(w+1));
-    } else {
-      var d = new Date(start.getTime() + w * 7 * 24 * 60 * 60 * 1000);
-      var mo = d.toLocaleDateString('en-US',{month:'short'});
-      var day = d.getDate();
-      th.innerHTML = (w===5 ? '&#9733;<br>' : '') + mo + ' ' + day;
-    }
-  }
-}
-
-
-
-function dismissPlanB() {
-  planbDismissed = true;
-  document.getElementById('planbBanner').classList.remove('show');
-  objectives.forEach(function(obj) {
-    obj.krs.forEach(function(kr) {
-      var cell = document.getElementById('c-' + kr.id + '-5');
-      if (cell) {
-        var s = getCellState(kr.id, 5).status || kr.defaults[5];
-        cell.querySelector('div').className = sCls(s);
-        cell.querySelector('div').textContent = sLbl(s);
-      }
-    });
-  });
-}
-
-// ─── BUILD TABLE ─────────────────────────────────────────────────────────────
-function buildTable() {
-  var tbody = document.getElementById('tbody');
-  var html = '';
-
-  objectives.forEach(function(obj, oi) {
-    // OBJ header row
-    var objScores = '';
-    for (var w = 0; w < 13; w++) {
-      var w6 = (w===5) ? ' w6-obj' : '';
-      var st = (w===5) ? 'color:#e67e22;font-weight:800' : '';
-      objScores += '<td class="obj-score'+w6+'" style="'+st+'">W'+(w+1)+'</td>';
-    }
-    html += '<tr>';
-    html += '<td class="obj-row" colspan="2">';
-    html += '<div class="obj-edit-wrap">';
-    html += '<span class="obj-edit-id">'+esc(obj.id)+'</span>';
-    html += '<span class="obj-title-text" onclick="startEditObj(\''+esc(obj.id)+'\')" title="Click to edit">'+esc(obj.label)+'</span>';
-    html += '<input class="obj-title-input" id="obj-input-'+esc(obj.id)+'" type="text" value="'+esc(obj.label)+'" onkeydown="objKeydown(event,\''+esc(obj.id)+'\')" />';
-    html += '<button class="obj-btn" onclick="startEditObj(\''+esc(obj.id)+'\')">Edit</button>';
-    html += '<button class="add-kr-btn" onclick="addKR(\''+esc(obj.id)+'\')">+ KR</button>';
-    html += '<button class="obj-del-btn" onclick="deleteObjective(\''+esc(obj.id)+'\')">Del OBJ</button>';
-    html += '</div></td>';
-    html += objScores + '</tr>';
-
-    // KR rows
-    obj.krs.forEach(function(kr, ki) {
-      var krCols = '';
-      for (var w = 0; w < 13; w++) {
-        var s = getCellState(kr.id,w).status || kr.defaults[w];
-        var v = getCellState(kr.id,w).val;
-        var n = getCellState(kr.id,w).note;
-        var tip = [v,n].filter(Boolean).join(' · ') || kr.kpi;
-        var tdCls = 'wk' + (w===5?' w6-col':'');
-        krCols += '<td class="'+tdCls+'" id="c-'+kr.id+'-'+w+'" onclick="openCellModal(\''+esc(kr.id)+'\','+w+')" title="'+esc(tip)+'"><div class="'+sCls(s)+'">'+sLbl(s)+'</div></td>';
-      }
-      html += '<tr>';
-      html += '<td class="kr-label">';
-      html += '<div class="kr-label-wrap">';
-      html += '<span class="kr-id-badge">'+esc(kr.id)+'</span>';
-      html += '<span class="kr-text">';
-      html += '<span class="kr-title-display" onclick="startEditKR(\''+esc(kr.id)+'\')">'+esc(kr.label)+'</span>';
-      html += '<input class="kr-title-input" id="kr-title-'+esc(kr.id)+'" type="text" value="'+esc(kr.label)+'" />';
-      html += '<span class="kr-kpi">&#128202; '+esc(kr.kpi)+'</span>';
-      html += '<input class="kr-kpi-input" id="kr-kpi-'+esc(kr.id)+'" type="text" value="'+esc(kr.kpi)+'" placeholder="KPI tracked…" />';
-      html += '</span>';
-      html += '<span class="kr-actions">';
-      html += '<button class="kr-save-btn" id="kr-save-'+esc(kr.id)+'" onclick="saveKREdit(\''+esc(kr.id)+'\')">Save</button>';
-      html += '<button class="kr-del-btn" onclick="deleteKR(\''+esc(obj.id)+'\',\''+esc(kr.id)+'\')">Del</button>';
-      html += '</span>';
-      html += '</div></td>';
-      html += '<td class="wt-cell">'+esc(kr.wt)+'</td>';
-      html += krCols;
-      html += '</tr>';
-    });
-  });
-
-  // Score row
-  var scoreCols = '';
-  for (var w = 0; w < 13; w++) {
-    var total = 0, green = 0;
-    objectives.forEach(function(obj) {
-      obj.krs.forEach(function(kr) {
-        var s = getCellState(kr.id,w).status || kr.defaults[w];
-        if (s!=='b') { total++; if (s==='g') green++; }
-      });
-    });
-    var pct = total>0 ? Math.round(green/total*100) : 0;
-    var bg = pct>=70?'#27ae60':pct>=40?'#f39c12':'#e74c3c';
-    var bdr = (w===5) ? 'border-left:2px solid #e67e22;border-right:2px solid #e67e22;' : '';
-    scoreCols += '<td class="'+(w===5?'w6-col':'')+'" style="background:'+bg+';color:#fff;font-size:11px;font-weight:700;'+bdr+'">'+pct+'%</td>';
-  }
-  html += '<tr class="score-row"><td class="score-label" colspan="2">Weekly OKR health — % KRs on track (G)</td>'+scoreCols+'</tr>';
-
-  tbody.innerHTML = html;
-  checkPlanB();
-}
-
-// ─── EDIT OBJECTIVE ───────────────────────────────────────────────────────────
-function startEditObj(objId) {
-  if (currentRole !== 'admin') return;
-  var obj = objectives.find(function(o){return o.id===objId;});
-  if (!obj) return;
-  var txt = document.querySelector('[onclick="startEditObj(\''+objId+'\')"].obj-title-text') ||
-            document.querySelectorAll('.obj-title-text');
-  // Use ID-based approach
-  var inp = document.getElementById('obj-input-'+objId);
-  if (!inp) return;
-  var span = inp.previousElementSibling;
-  if (inp.style.display==='inline') { // already editing — save
-    obj.label = inp.value;
-    buildTable();
-    return;
-  }
-  if (span) span.style.display='none';
-  inp.style.display='inline';
-  inp.focus(); inp.select();
-  // find edit btn
-  var parent = inp.parentElement;
-  var btns = parent.querySelectorAll('.obj-btn');
-  if (btns.length) btns[0].textContent='Save';
-}
-
-function objKeydown(e, objId) {
-  if (e.key==='Enter') {
-    var inp = document.getElementById('obj-input-'+objId);
-    var obj = objectives.find(function(o){return o.id===objId;});
-    if (obj && inp) obj.label = inp.value;
-    buildTable();
-  }
-  if (e.key==='Escape') buildTable();
-}
-
-function addObjective() {
-  if (currentRole !== 'admin') { alert('Admin access required.'); return; }
-  // Always derive the next number from the current live list so gaps don't occur
-  var usedNums = objectives.map(function(o) {
-    var m = o.id.match(/OBJ-(\d+)$/);
-    return m ? parseInt(m[1], 10) : 0;
-  });
-  objCounter = usedNums.length ? Math.max.apply(null, usedNums) : DEFAULT_OBJECTIVES.length;
-  objCounter++;
-  var newId = 'OBJ-' + objCounter;
-  objectives.push({
-    id: newId,
-    label: 'New Objective ' + objCounter,
-    krs: [
-      {id: newId+'.KR1', label:'New Key Result', kpi:'KPI to track', wt:'100%',
-       defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']}
-    ]
-  });
-  logActivity('Added objective: ' + newId);
-  logAudit(newId, -1, null, 'added', 'New Objective', 'Objective created by ' + currentUser);
-  buildTable();
-  // scroll to bottom
-  var tbody = document.getElementById('tbody');
-  tbody.lastElementChild.scrollIntoView({behavior:'smooth', block:'center'});
-}
-
-function deleteObjective(objId) {
-  if (currentRole !== 'admin') { alert('Admin access required.'); return; }
-  if (!confirm('Delete ' + objId + ' and all its Key Results?')) return;
-  var delObj = objectives.find(function(o){return o.id===objId;});
-  var delLabel = delObj ? delObj.label.slice(0,40) : objId;
-  objectives = objectives.filter(function(o){return o.id!==objId;});
-  logActivity('Deleted objective: ' + objId + ' — ' + delLabel);
-  logAudit(objId, -1, 'active', 'deleted', '', 'Objective and all KRs deleted by ' + currentUser);
-  buildTable();
-}
-
-// ─── EDIT KR ─────────────────────────────────────────────────────────────────
-function startEditKR(krId) {
-  if (currentRole !== 'admin') return;
-  var titleInp = document.getElementById('kr-title-'+krId);
-  var kpiInp = document.getElementById('kr-kpi-'+krId);
-  var saveBtn = document.getElementById('kr-save-'+krId);
-  if (!titleInp) return;
-  var display = titleInp.previousElementSibling;
-  var kpiSpan = kpiInp ? kpiInp.previousElementSibling : null;
-  if (display) display.style.display='none';
-  if (kpiSpan) kpiSpan.style.display='none';
-  titleInp.style.display='block';
-  if (kpiInp) kpiInp.style.display='block';
-  if (saveBtn) saveBtn.style.display='inline-block';
-  titleInp.focus(); titleInp.select();
-}
-
-function saveKREdit(krId) {
-  var titleInp = document.getElementById('kr-title-'+krId);
-  var kpiInp = document.getElementById('kr-kpi-'+krId);
-  for (var i=0;i<objectives.length;i++) {
-    var kr = objectives[i].krs.find(function(k){return k.id===krId;});
-    if (kr) {
-      var oldLabel = kr.label;
-      if (titleInp) kr.label = titleInp.value || kr.label;
-      if (kpiInp) kr.kpi = kpiInp.value || kr.kpi;
-      if (oldLabel !== kr.label) logActivity('Edited KR label: ' + krId + ' → ' + kr.label.slice(0,40));
-      break;
-    }
-  }
-  buildTable();
-}
-
-function addKR(objId) {
-  if (currentRole !== 'admin') { alert('Admin access required.'); return; }
-  var obj = objectives.find(function(o){return o.id===objId;});
-  if (!obj) return;
-  if (!krCounters[objId]) krCounters[objId] = obj.krs.length;
-  krCounters[objId]++;
-  var newKrId = objId + '.KR' + krCounters[objId];
-  obj.krs.push({
-    id: newKrId, label:'New Key Result', kpi:'KPI to track', wt:'—',
-    defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']
-  });
-  logActivity('Added KR: ' + newKrId + ' to ' + objId);
-  logAudit(newKrId, -1, null, 'added', 'New Key Result', 'KR created under ' + objId + ' by ' + currentUser);
-  buildTable();
-}
-
-function deleteKR(objId, krId) {
-  if (currentRole !== 'admin') { alert('Admin access required.'); return; }
-  if (!confirm('Delete Key Result ' + krId + '?')) return;
-  var obj = objectives.find(function(o){return o.id===objId;});
-  if (!obj) return;
-  var delKR = obj.krs.find(function(k){return k.id===krId;});
-  var delKRLabel = delKR ? delKR.label.slice(0,40) : krId;
-  obj.krs = obj.krs.filter(function(k){return k.id!==krId;});
-  logActivity('Deleted KR: ' + krId + ' — ' + delKRLabel);
-  logAudit(krId, -1, 'active', 'deleted', '', 'KR deleted from ' + objId + ' by ' + currentUser);
-  buildTable();
-}
-
-// ─── CELL MODAL ───────────────────────────────────────────────────────────────
-function findKR(krId) {
-  for (var i=0;i<objectives.length;i++) {
-    for (var j=0;j<objectives[i].krs.length;j++) {
-      if (objectives[i].krs[j].id===krId) return objectives[i].krs[j];
-    }
-  }
-  return null;
-}
-
-function openCellModal(krId, w) {
-  if (currentRole === 'viewer' || !currentUser) return;
-  cellEditTarget = {krId:krId, w:w};
-  var kr = findKR(krId);
-  var cur = getCellState(krId, w);
-  document.getElementById('cellModalTitle').textContent = (kr ? kr.label : krId);
-  document.getElementById('cellModalSub').textContent = krId + ' · Week ' + (w+1) + (kr ? ' · KPI: ' + kr.kpi : '');
-  document.getElementById('cellStatus').value = cur.status || (kr ? kr.defaults[w] : 'b');
-  document.getElementById('cellVal').value = cur.val;
-  document.getElementById('cellNotes').value = cur.note;
-  document.getElementById('cellModal').classList.add('show');
-}
-
-function closeCellModal(e) {
-  if (e && e.target!==document.getElementById('cellModal')) return;
-  document.getElementById('cellModal').classList.remove('show');
-  cellEditTarget = null;
-}
-
-function saveCellModal() {
-  if (!cellEditTarget) return;
-  var krId = cellEditTarget.krId, w = cellEditTarget.w;
-  var kr = findKR(krId);
-  var oldS = getCellState(krId, w).status || (kr ? kr.defaults[w] : 'b');
-  var newStatus = document.getElementById('cellStatus').value;
-  var val = document.getElementById('cellVal').value.trim();
-  var note = document.getElementById('cellNotes').value.trim();
-  setCellState(krId, w, newStatus, val, note);
-  logAudit(krId, w, oldS, newStatus, val, note);
-  logActivity('Updated ' + krId + ' W'+(w+1)+' to ' + sLbl(newStatus));
-  document.getElementById('cellModal').classList.remove('show');
-  cellEditTarget = null;
-  planbDismissed = false;
-  buildTable();
-}
-
-// ─── PERSISTENCE ─────────────────────────────────────────────────────────────
-function saveToStorage() {
-  var payload = {
-    objectives:objectives, cellData:cellData,
-    programName: document.getElementById('programName') ? document.getElementById('programName').value : '',
-    startDate: sessionStorage.getItem('okr_startDate')||'',
-    settings:settings, users:users,
-    auditLog:auditLog, activityLog:activityLog,
-    savedAt: new Date().toISOString()
-  };
-  localStorage.setItem('mober_okr_live_v1', JSON.stringify(payload));
-  document.getElementById('lastSaved').textContent = new Date().toLocaleTimeString();
-  alert('Saved.');
-}
-
-function loadFromStorage() {
-  try {
-    var raw = localStorage.getItem('mober_okr_live_v1');
-    if (!raw) return;
-    var d = JSON.parse(raw);
-    if (d.objectives)   objectives   = d.objectives;
-    if (d.cellData)     cellData     = d.cellData;
-    if (d.settings)     settings     = d.settings;
-    if (d.users)        users        = d.users;
-    if (d.auditLog)     auditLog     = d.auditLog;
-    if (d.activityLog)  activityLog  = d.activityLog;
-    if (d.programName) { document.getElementById('programName').value = d.programName; updateHeader(); }
-    if (d.startDate) { sessionStorage.setItem('okr_startDate',d.startDate); liveComputePeriod(); }
-    if (d.savedAt) {
-      var dt = new Date(d.savedAt);
-      document.getElementById('lastSaved').textContent = dt.toLocaleDateString()+' '+dt.toLocaleTimeString();
-    }
-    buildTable();
-    renderAudit();
-  } catch(e) {}
-}
-
-function resetAll() {
-  if (currentRole !== 'admin') { alert('Admin access required.'); return; }
-  if (!confirm('Reset everything to defaults?')) return;
-  objectives = JSON.parse(JSON.stringify(DEFAULT_OBJECTIVES));
-  cellData = {};
-  planbDismissed = false;
-  logActivity('Full reset — all data cleared by ' + currentUser);
-  localStorage.removeItem('mober_okr_live_v1');
-  document.getElementById('startDate').value = '';
-  document.getElementById('endDateDisplay').textContent = '—';
-  document.getElementById('lastSaved').textContent = 'never';
-  buildTable();
-  updateHeader();
-}
-
-// ─── EXPORT CSV ──────────────────────────────────────────────────────────────
-function exportCSV() {
-  var rows = [['Objective','KR ID','Key Result','KPI','Weight','W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12','W13']];
-  objectives.forEach(function(obj) {
-    obj.krs.forEach(function(kr) {
-      var row = [obj.id, kr.id, kr.label, kr.kpi, kr.wt];
-      for (var w=0;w<13;w++) {
-        var s = getCellState(kr.id,w).status || kr.defaults[w];
-        var v = getCellState(kr.id,w).val;
-        row.push(v ? sLbl(s)+'('+v+')' : sLbl(s));
-      }
-      rows.push(row);
-    });
-  });
-  var csv = rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
-  var blob = new Blob([csv],{type:'text/csv'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'mober_okr_scorecard.csv';
-  a.click();
-}
-
-// ─── KEYBOARD ────────────────────────────────────────────────────────────────
-document.addEventListener('keydown', function(e) {
-  if (e.key==='Escape') {
-    document.getElementById('cellModal').classList.remove('show');
-    cellEditTarget = null;
-  }
-  if (e.key==='Enter' && cellEditTarget) saveCellModal();
-});
-
-// ─── USERS & ROLES ───────────────────────────────────────────────────────────
-var DEFAULT_USERS = [
-  { name:'DN',    role:'admin',  pin:'1234' },
-  { name:'Neri',  role:'editor', pin:'1234' },
-  { name:'Jeremy',role:'viewer', pin:'1234' },
-];
-var users = JSON.parse(JSON.stringify(DEFAULT_USERS));
+var users = [];
+var cellData = {};
+var auditLog = [];
+var activityLog = [];
+var settings = {planBThreshold:3,planBVisibleToAll:true,showActions:true,showScore:true,showKpi:true};
 var currentRole = 'viewer';
 var currentUser = '';
+var cellEditTarget = null;
+var planbDismissed = false;
+var objCounter = 6;
+var krCounters = {};
+var dbVersion = null;
 
-// Settings state
-var settings = {
-  planBThreshold: 3,
-  planBLabel: 'Plan B',
-  planBVisibleToViewers: true,
-  showActions: true,
-  showScore: true,
-  showKpi: true,
-};
+function sCls(s){return s==='g'?'wg':s==='y'?'wy':s==='r'?'wr':'wb';}
+function sLbl(s){return s==='g'?'G':s==='y'?'Y':s==='r'?'R':'—';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function getCellState(krId,w){var k=cellData[krId]||{};return{status:k['w'+w]||null,val:k['v'+w]||'',note:k['n'+w]||''};}
+function setCellState(krId,w,s,v,n){if(!cellData[krId])cellData[krId]={};cellData[krId]['w'+w]=s;cellData[krId]['v'+w]=v;cellData[krId]['n'+w]=n;}
+function findKR(id){for(var i=0;i<objectives.length;i++){for(var j=0;j<objectives[i].krs.length;j++){if(objectives[i].krs[j].id===id)return objectives[i].krs[j];}}return null;}
+function findObjOfKR(krId){for(var i=0;i<objectives.length;i++){if(objectives[i].krs.find(function(k){return k.id===krId;}))return objectives[i];}return null;}
+function setSyncStatus(state){var el=document.getElementById('syncStatus');if(!el)return;if(state==='ok'){el.className='sync-indicator sync-ok';el.textContent='● Connected';}else if(state==='busy'){el.className='sync-indicator sync-busy';el.textContent='● Syncing...';}else{el.className='sync-indicator sync-err';el.textContent='● Offline';}}
 
-// ─── ROLE ENFORCEMENT ─────────────────────────────────────────────────────────
-function applyRole() {
-  var isAdmin  = currentRole === 'admin';
-  var isEditor = currentRole === 'editor' || isAdmin;
-
-  // Badge
-  var badge = document.getElementById('roleBadge');
-  var icons = { admin:'&#128272;', editor:'&#9998;', viewer:'&#128100;' };
-  var labels = { admin:'Admin', editor:'Editor', viewer:'Viewer' };
-  var cls = { admin:'rb-admin', editor:'rb-editor', viewer:'rb-viewer' };
-  if (!currentUser) {
-    badge.innerHTML = '&#128274; Sign In';
-    badge.className = 'role-badge rb-viewer';
-  } else {
-    badge.innerHTML = icons[currentRole] + ' ' + currentUser + ' &nbsp;<span style="opacity:0.6;font-weight:400">(' + labels[currentRole] + ')</span>';
-    badge.className = 'role-badge ' + cls[currentRole];
-  }
-
-  // Controls visibility
-  var adminOnly = ['btnAddObj','btnResetAll','btnResetCells','userSection'];
-  adminOnly.forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.style.display = isAdmin ? '' : 'none';
-  });
-
-  // Hide settings gear for non-admins
-  var gearBtn = document.querySelector('.header-right button[title="Settings"]');
-  if (gearBtn) gearBtn.style.display = isAdmin ? '' : 'none';
-
-  // Plan B banner visibility
-  var banner = document.getElementById('planbBanner');
-  if (banner) {
-    var showBanner = isEditor || settings.planBVisibleToViewers;
-    // If hidden role, don't touch — checkPlanB controls .show class
-    if (!showBanner) banner.classList.remove('show');
-  }
-
-  // Corrective actions grid
-  var grid = document.querySelector('.planb-grid');
-  if (grid) grid.style.display = settings.showActions ? '' : 'none';
-
-  // Score row
-  var scoreRow = document.querySelector('tr.score-row');
-  if (scoreRow) scoreRow.style.display = settings.showScore ? '' : 'none';
-
-  // KPI sub-labels
-  document.querySelectorAll('.kr-kpi').forEach(function(el) {
-    el.style.display = settings.showKpi ? '' : 'none';
-  });
-
-  // Edit controls on table (obj edit buttons, kr del/save)
-  var editEls = document.querySelectorAll('.obj-btn,.obj-del-btn,.add-kr-btn,.kr-actions');
-  editEls.forEach(function(el) { el.style.display = isAdmin ? '' : 'none'; });
-
-  // Cell clicking — editors and admins can click; viewers cannot
-  document.querySelectorAll('td.wk').forEach(function(td) {
-    if (isEditor) {
-      td.style.cursor = 'pointer';
-      td.style.pointerEvents = '';
-    } else {
-      td.style.cursor = 'default';
-      td.style.pointerEvents = 'none';
+// ── SUPABASE ─────────────────────────────────────────────────────────────────
+async function loadFromDB(){
+  setSyncStatus('busy');
+  try{
+    var r=await sb.from('okr_state').select('*').eq('id','main').single();
+    if(r.data){
+      if(r.data.objectives)objectives=r.data.objectives;
+      if(r.data.cell_data)cellData=r.data.cell_data;
+      if(r.data.settings)settings=r.data.settings;
+      dbVersion=r.data.updated_at;
+      document.getElementById('lastSaved').textContent=new Date(r.data.updated_at).toLocaleTimeString();
     }
-  });
+    var ru=await sb.from('users').select('*').order('created_at');
+    if(ru.data)users=ru.data.map(function(u){return{name:u.name,firstName:u.first_name||u.name,lastName:u.last_name||'',email:u.email||'',mobile:u.mobile||'',dept:u.dept||'',role:u.role,pin:u.pin_hash,id:u.id};});
+    setSyncStatus('ok');
+    buildTable();buildDashboard();
+  }catch(e){setSyncStatus('err');console.error(e);}
 }
 
-// ─── LOGIN ────────────────────────────────────────────────────────────────────
-function openLogin() {
-  var sel = document.getElementById('loginUser');
-  sel.innerHTML = '';
-  users.forEach(function(u) {
-    var opt = document.createElement('option');
-    opt.value = u.name;
-    opt.textContent = u.name + ' (' + u.role + ')';
-    sel.appendChild(opt);
-  });
-  document.getElementById('loginPin').value = '';
-  document.getElementById('loginError').textContent = '';
+async function saveToDB(){
+  setSyncStatus('busy');
+  try{
+    var payload={id:'main',objectives:objectives,cell_data:cellData,settings:settings,updated_at:new Date().toISOString()};
+    var r=await sb.from('okr_state').upsert(payload);
+    if(r.error)throw r.error;
+    document.getElementById('lastSaved').textContent=new Date().toLocaleTimeString();
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('err');alert('Sync failed: '+e.message);}
+}
+
+async function logAuditToDB(entry){
+  try{await sb.from('audit_log').insert(entry);}catch(e){console.error('Audit log error',e);}
+}
+async function logActivityToDB(entry){
+  try{await sb.from('activity_log').insert(entry);}catch(e){console.error('Activity log error',e);}
+}
+async function loadAuditFromDB(){
+  var cont=document.getElementById('auditFullContent');
+  if(cont)cont.innerHTML='<div class="audit-empty">Loading...</div>';
+  try{
+    var r=await sb.from('audit_log').select('*').order('ts',{ascending:false}).limit(200);
+    auditLog=r.data||[];renderAuditFull();
+  }catch(e){if(cont)cont.innerHTML='<div class="audit-empty">Could not load audit log.</div>';}
+}
+async function loadActivityFromDB(){
+  try{
+    var r=await sb.from('activity_log').select('*').order('ts',{ascending:false}).limit(100);
+    activityLog=r.data||[];renderActivityLog();
+  }catch(e){}
+}
+
+function logAudit(krId,week,oldStatus,newStatus,val,note,type){
+  var kr=findKR(krId);var obj=findObjOfKR(krId);
+  var weekLabel=week<0?'—':'W'+(week+1);
+  var entry={ts:new Date().toISOString(),username:currentUser||'?',obj_id:obj?obj.id:krId,kr_id:krId,kr_label:kr?kr.label.slice(0,60):krId,week:weekLabel,from_status:oldStatus||'—',to_status:newStatus,val:val||'',note:note||'',action_type:type||'cell'};
+  auditLog.unshift(entry);if(auditLog.length>500)auditLog.length=500;
+  logAuditToDB(entry);
+}
+function logActivity(action){
+  var entry={ts:new Date().toISOString(),username:currentUser||'?',role:currentRole,action:action};
+  activityLog.unshift(entry);if(activityLog.length>200)activityLog.length=200;
+  logActivityToDB(entry);renderActivityLog();
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+function applyRole(){
+  var isAdmin=currentRole==='admin';
+  var isEditor=currentRole==='editor'||isAdmin;
+  var badge=document.getElementById('roleBadge');
+  var icons={admin:'&#128272;',editor:'&#9998;',viewer:'&#128100;'};
+  var labels={admin:'Admin',editor:'Editor',viewer:'Viewer'};
+  var cls={admin:'rb-admin',editor:'rb-editor',viewer:'rb-viewer'};
+  if(!currentUser){badge.innerHTML='&#128274; Sign In';badge.className='role-badge rb-viewer';}
+  else{badge.innerHTML=icons[currentRole]+' '+esc(currentUser)+' <span style="opacity:0.6;font-weight:400">('+labels[currentRole]+')</span>';badge.className='role-badge '+cls[currentRole];}
+  document.getElementById('gearBtn').style.display=isAdmin?'':'none';
+  document.getElementById('btnAddObj').style.display=isAdmin?'':'none';
+  document.getElementById('btnResetCells').style.display=isAdmin?'':'none';
+  document.getElementById('btnResetAll').style.display=isAdmin?'':'none';
+  document.querySelectorAll('td.wk').forEach(function(td){td.style.cursor=isEditor?'pointer':'default';td.style.pointerEvents=isEditor?'':'none';});
+  document.querySelectorAll('.obj-btn,.obj-del-btn,.add-kr-btn,.kr-actions').forEach(function(el){el.style.display=isAdmin?'':'none';});
+  var grid=document.querySelector('.planb-grid');if(grid)grid.style.display=settings.showActions?'':'none';
+  var scoreRow=document.querySelector('tr.score-row');if(scoreRow)scoreRow.style.display=settings.showScore?'':'none';
+  document.querySelectorAll('.kr-kpi').forEach(function(el){el.style.display=settings.showKpi?'':'none';});
+}
+
+function openLogin(){
+  var sel=document.getElementById('loginUser');sel.innerHTML='';
+  users.forEach(function(u){var o=document.createElement('option');o.value=u.name;o.textContent=u.name+' ('+u.role+')';sel.appendChild(o);});
+  if(!users.length){var o=document.createElement('option');o.value='DN';o.textContent='DN (admin)';sel.appendChild(o);}
+  document.getElementById('loginPin').value='';document.getElementById('loginError').textContent='';
   document.getElementById('loginOverlay').classList.remove('hidden');
-  setTimeout(function(){ document.getElementById('loginPin').focus(); }, 100);
+  setTimeout(function(){document.getElementById('loginPin').focus();},100);
+}
+function closeLogin(){document.getElementById('loginOverlay').classList.add('hidden');}
+function doLogin(){
+  var name=document.getElementById('loginUser').value;var pin=document.getElementById('loginPin').value;
+  if(pin.length<6){document.getElementById('loginError').textContent='PIN must be 6 digits.';return;}
+  var user=users.find(function(u){return u.name===name&&u.pin===pin;});
+  if(!user){document.getElementById('loginError').textContent='Incorrect PIN. Try again.';document.getElementById('loginPin').value='';return;}
+  currentRole=user.role;currentUser=user.name;closeLogin();
+  logActivity('Signed in as '+user.role);buildTable();applyRole();
 }
 
-function closeLogin() {
-  document.getElementById('loginOverlay').classList.add('hidden');
-}
-
-function doLogin() {
-  var name = document.getElementById('loginUser').value;
-  var pin  = document.getElementById('loginPin').value;
-  var user = users.find(function(u){ return u.name===name && u.pin===pin; });
-  if (!user) {
-    document.getElementById('loginError').textContent = 'Incorrect PIN. Try again.';
-    document.getElementById('loginPin').value = '';
-    document.getElementById('loginPin').focus();
-    return;
-  }
-  currentRole = user.role;
-  currentUser = user.name;
-  closeLogin();
-  logActivity('Signed in as ' + user.role);
-  buildTable();
-  applyRole();
-}
-
-// ─── SETTINGS ────────────────────────────────────────────────────────────────
-function openSettings() {
-  if (currentRole !== 'admin') return;
-  document.getElementById('sProgramName').value = document.getElementById('programName').value || 'Mober Core OKR';
-  var sd = sessionStorage.getItem('okr_startDate') || '';
-  document.getElementById('sStartDate').value = sd;
-  if (sd) {
-    var end = new Date(new Date(sd+'T00:00:00').getTime() + 12*7*24*60*60*1000);
-    document.getElementById('sEndDate').value = end.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
-  }
-  document.getElementById('sPlanBThreshold').value = settings.planBThreshold;
-  document.getElementById('sPlanBLabel').value = settings.planBLabel;
-  document.getElementById('sPlanBViewers').checked = settings.planBVisibleToViewers;
-  document.getElementById('sShowActions').checked = settings.showActions;
-  document.getElementById('sShowScore').checked = settings.showScore;
-  document.getElementById('sShowKpi').checked = settings.showKpi;
-  renderUserTable();
-  // Patch user table header
-  var tbl = document.getElementById('userTable');
-  if (tbl) tbl.querySelector('thead tr').innerHTML = '<th>Name</th><th>Role</th><th>Dept</th><th>Email</th><th></th>';
-  // Inject activity log section
-  if (!document.getElementById('activityLogSection')) {
-    var body = document.querySelector('.settings-body');
-    var section = document.createElement('div');
-    section.className = 'settings-section';
-    section.id = 'activityLogSection';
-    section.innerHTML = '<h4>User Activity Log <span style="float:right;font-weight:400;font-size:10px;cursor:pointer;color:#2471a3" onclick="exportActivityCSV()">&#8595; Export</span></h4><div class="activity-log" id="activityLogContent"><div class="al-empty">No activity recorded yet.</div></div>';
-    var saveBtn = body.querySelector('.save-settings-btn');
-    body.insertBefore(section, saveBtn);
-  }
-  renderActivityLog();
-  document.getElementById('settingsOverlay').classList.add('show');
-}
-
-function closeSettings(e) {
-  if (e && e.target !== document.getElementById('settingsOverlay')) return;
-  document.getElementById('settingsOverlay').classList.remove('show');
-}
-
-function liveUpdateHeader() {
-  var val = document.getElementById('sProgramName').value || '—';
-  document.getElementById('headerProgram').textContent = val;
-  document.getElementById('footerProgram').textContent = val;
-  document.getElementById('headerTitle').textContent = val + ' · OKR 13-Week Scorecard';
-  document.getElementById('periodDisplay').textContent = '';
-}
-
-function liveComputePeriod() {
-  var sd = document.getElementById('sStartDate').value;
-  if (!sd) { document.getElementById('sEndDate').value = ''; return; }
-  sessionStorage.setItem('okr_startDate', sd);
-  var start = new Date(sd+'T00:00:00');
-  var end   = new Date(start.getTime() + 12*7*24*60*60*1000);
-  var endStr = end.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
-  var startStr = start.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
-  document.getElementById('sEndDate').value = endStr;
-  var periodStr = startStr + ' – ' + endStr;
-  document.getElementById('headerPeriod').textContent = periodStr;
-  document.getElementById('footerPeriod').textContent = periodStr;
-  document.getElementById('periodDisplay').textContent = periodStr;
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
+function updateHeader(){var prog=document.getElementById('programName').value||'Mober Core OKR';document.getElementById('headerProgram').textContent=prog;document.getElementById('footerProgram').textContent=prog;}
+function liveUpdateHeader(){var prog=document.getElementById('sProgramName').value||'Mober Core OKR';document.getElementById('programName').value=prog;document.getElementById('headerProgram').textContent=prog;document.getElementById('footerProgram').textContent=prog;}
+function liveComputePeriod(){
+  var sd=document.getElementById('sStartDate').value;
+  if(!sd){document.getElementById('sEndDate').value='';document.getElementById('headerPeriod').textContent='—';document.getElementById('footerPeriod').textContent='—';document.getElementById('periodDisplay').textContent='Set start date in ⚙ Settings';updateWeekHeaders(null);return;}
+  sessionStorage.setItem('okr_startDate',sd);
+  var start=new Date(sd+'T00:00:00');var end=new Date(start.getTime()+12*7*24*60*60*1000);
+  var opts={year:'numeric',month:'short',day:'numeric'};
+  var pStr=start.toLocaleDateString('en-US',opts)+' – '+end.toLocaleDateString('en-US',opts);
+  document.getElementById('sEndDate').value=end.toLocaleDateString('en-US',opts);
+  document.getElementById('headerPeriod').textContent=pStr;document.getElementById('footerPeriod').textContent=pStr;document.getElementById('periodDisplay').textContent=pStr;
   updateWeekHeaders(start);
 }
-
-function saveSettings() {
-  settings.planBThreshold       = parseInt(document.getElementById('sPlanBThreshold').value, 10) || 3;
-  settings.planBLabel           = document.getElementById('sPlanBLabel').value || 'Plan B';
-  settings.planBVisibleToViewers= document.getElementById('sPlanBViewers').checked;
-  settings.showActions          = document.getElementById('sShowActions').checked;
-  settings.showScore            = document.getElementById('sShowScore').checked;
-  settings.showKpi              = document.getElementById('sShowKpi').checked;
-  // Save users from table
-  saveUserTableToUsers();
-  // Apply program name
-  liveUpdateHeader();
-  liveComputePeriod();
-  logActivity('Settings updated by ' + currentUser);
+function updateWeekHeaders(start){
+  for(var w=0;w<13;w++){var th=document.getElementById('wh'+w);if(!th)continue;
+    if(!start){th.innerHTML=(w===5?'W6&#9733;':'W'+(w+1));}
+    else{var d=new Date(start.getTime()+w*7*24*60*60*1000);th.innerHTML=(w===5?'&#9733;<br>':'')+d.toLocaleDateString('en-US',{month:'short'})+' '+d.getDate();}}
+}
+function openSettings(){
+  if(currentRole!=='admin')return;
+  document.getElementById('sProgramName').value=document.getElementById('programName').value||'Mober Core OKR';
+  var sd=sessionStorage.getItem('okr_startDate')||'';document.getElementById('sStartDate').value=sd;
+  if(sd){var end=new Date(new Date(sd+'T00:00:00').getTime()+12*7*24*60*60*1000);document.getElementById('sEndDate').value=end.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}
+  document.getElementById('sPlanBThreshold').value=settings.planBThreshold;
+  document.getElementById('sPlanBAll').checked=settings.planBVisibleToAll;
+  document.getElementById('sShowActions').checked=settings.showActions;
+  document.getElementById('sShowScore').checked=settings.showScore;
+  document.getElementById('sShowKpi').checked=settings.showKpi;
+  renderUserTable();loadActivityFromDB();
+  document.getElementById('settingsOverlay').classList.add('show');
+}
+function closeSettings(e){if(e&&e.target!==document.getElementById('settingsOverlay'))return;document.getElementById('settingsOverlay').classList.remove('show');}
+function saveSettings(){
+  settings.planBThreshold=parseInt(document.getElementById('sPlanBThreshold').value,10)||3;
+  settings.planBVisibleToAll=document.getElementById('sPlanBAll').checked;
+  settings.showActions=document.getElementById('sShowActions').checked;
+  settings.showScore=document.getElementById('sShowScore').checked;
+  settings.showKpi=document.getElementById('sShowKpi').checked;
+  liveUpdateHeader();liveComputePeriod();logActivity('Settings updated');
   document.getElementById('settingsOverlay').classList.remove('show');
-  buildTable();
-  applyRole();
+  saveToDB();buildTable();
 }
 
-// ─── USER TABLE ───────────────────────────────────────────────────────────────
-function renderUserTable() {
-  var tbody = document.getElementById('userTableBody');
-  if (!tbody) return;
-  var html = '';
-  users.forEach(function(u, i) {
-    var name = u.firstName ? (u.firstName + (u.lastName?' '+u.lastName:'')) : u.name;
-    var roleLabel = u.role==='admin'?'&#128272; Admin':u.role==='editor'?'&#9998; Editor':'&#128100; Viewer';
-    html += '<tr>';
-    html += '<td style="font-weight:600">'+esc(name)+'</td>';
-    html += '<td style="font-size:10px">'+roleLabel+'</td>';
-    html += '<td style="font-size:10px;color:#888">'+esc(u.dept||'—')+'</td>';
-    html += '<td style="font-size:10px;color:#888">'+esc(u.email||'—')+'</td>';
-    html += '<td><button class="del-user-btn" onclick="confirmDeleteUser('+i+')">Del</button></td>';
-    html += '</tr>';
+// ── USERS ─────────────────────────────────────────────────────────────────────
+function renderUserTable(){
+  var tbody=document.getElementById('userTableBody');if(!tbody)return;var html='';
+  users.forEach(function(u,i){
+    var name=u.firstName?(u.firstName+(u.lastName?' '+u.lastName:'')):u.name;
+    var rl=u.role==='admin'?'&#128272; Admin':u.role==='editor'?'&#9998; Editor':'&#128100; Viewer';
+    html+='<tr><td style="font-weight:600">'+esc(name)+'</td><td>'+rl+'</td><td style="color:#888">'+esc(u.dept||'—')+'</td><td style="color:#888;font-size:10px">'+esc(u.email||'—')+'</td><td><button class="del-user-btn" onclick="confirmDeleteUser('+i+')">Del</button></td></tr>';
   });
-  tbody.innerHTML = html;
+  tbody.innerHTML=html;
 }
-
-function userFieldChange(el) {
-  var i = parseInt(el.getAttribute('data-i'), 10);
-  var f = el.getAttribute('data-f');
-  users[i][f] = el.value;
+async function confirmDeleteUser(i){
+  var u=users[i];var name=u.firstName?(u.firstName+(u.lastName?' '+u.lastName:'')):u.name;
+  if(!confirm('Remove '+name+'?'))return;
+  if(u.id){await sb.from('users').delete().eq('id',u.id);}
+  logActivity('Removed user: '+name);users.splice(i,1);renderUserTable();
 }
-
-function addUserRow() {
-  users.push({ name:'New User', role:'viewer', pin:'0000' });
-  renderUserTable();
-}
-
-function deleteUserRow(i) {
-  if (users.length <= 1) { alert('At least one user required.'); return; }
-  users.splice(i, 1);
-  renderUserTable();
-}
-
-function saveUserTableToUsers() {
-  // Already updated live via userFieldChange — just ensure no blanks
-  users = users.filter(function(u){ return u.name.trim() !== ''; });
-}
-
-// ─── PATCH checkPlanB to use settings.planBThreshold ─────────────────────────
-function checkPlanB() {
-  if (planbDismissed) return;
-  var threshold = (settings && settings.planBThreshold) ? settings.planBThreshold : 3;
-  var redCount = 0;
-  objectives.forEach(function(obj) {
-    obj.krs.forEach(function(kr) {
-      var reds = 0;
-      for (var w = 0; w < 5; w++) {
-        var s = getCellState(kr.id, w).status || kr.defaults[w];
-        if (s === 'r') reds++;
-      }
-      if (reds >= threshold) redCount++;
-    });
-  });
-  var banner = document.getElementById('planbBanner');
-  if (!banner) return;
-  // Show banner: if enough reds AND (not a plain viewer, OR viewer toggle is on, OR no one signed in yet)
-  var isViewer = currentRole === 'viewer';
-  var viewerAllowed = (settings && settings.planBVisibleToViewers !== false);
-  var showForRole = !isViewer || viewerAllowed || !currentUser;
-  if (redCount >= threshold && showForRole) {
-    banner.classList.add('show');
-    // Mark W6 (index 5) purple for qualifying KRs
-    objectives.forEach(function(obj) {
-      obj.krs.forEach(function(kr) {
-        var reds = 0;
-        for (var w = 0; w < 5; w++) {
-          var s = getCellState(kr.id, w).status || kr.defaults[w];
-          if (s === 'r') reds++;
-        }
-        if (reds >= threshold) {
-          var cell = document.getElementById('c-' + kr.id + '-5');
-          if (cell) {
-            var s6 = getCellState(kr.id, 5).status || kr.defaults[5];
-            if (s6 === 'r' || s6 === 'b') {
-              cell.querySelector('div').className = 'wp';
-              cell.querySelector('div').textContent = 'P';
-            }
-          }
-        }
-      });
-    });
-  } else {
-    banner.classList.remove('show');
-  }
-}
-
-// ─── PATCH resetAll and add resetCells ───────────────────────────────────────
-function resetCells() {
-  if (currentRole !== 'admin') { alert('Admin access required.'); return; }
-  if (!confirm('Clear all RAG statuses, values and notes? Objectives and KRs are kept.')) return;
-  cellData = {};
-  planbDismissed = false;
-  logActivity('Reset cells — all RAG data cleared by ' + currentUser);
-  buildTable();
-  applyRole();
-}
-
-
-// ─── EXPORT / IMPORT JSON ────────────────────────────────────────────────────
-function exportJSON() {
-  var payload = {
-    version: 'mober_okr_live_v1',
-    exportedAt: new Date().toISOString(),
-    programName: document.getElementById('sProgramName') ? document.getElementById('sProgramName').value : 'Mober Core OKR',
-    startDate: sessionStorage.getItem('okr_startDate') || '',
-    objectives: objectives,
-    cellData: cellData,
-    settings: settings,
-    users: users
-  };
-  var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  var d = new Date();
-  a.download = 'mober_okr_backup_' + d.toISOString().slice(0,10) + '.json';
-  a.click();
-}
-
-function importJSON(event) {
-  var file = event.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var data = JSON.parse(e.target.result);
-      if (!data.version || !data.version.includes('mober_okr')) {
-        alert('Invalid backup file.'); return;
-      }
-      if (!confirm('Restore from backup dated ' + (data.exportedAt || 'unknown') + '? This will overwrite current data.')) return;
-      if (data.objectives) objectives = data.objectives;
-      if (data.cellData)   cellData   = data.cellData;
-      if (data.settings)   settings   = data.settings;
-      if (data.users)      users      = data.users;
-      if (data.programName) {
-        document.getElementById('programName').value = data.programName;
-        updateHeader();
-      }
-      if (data.startDate) {
-        sessionStorage.setItem('okr_startDate', data.startDate);
-        document.getElementById('sStartDate') && (document.getElementById('sStartDate').value = data.startDate);
-        liveComputePeriod();
-      }
-      buildTable();
-      applyRole();
-      alert('Restore complete.');
-    } catch(err) {
-      alert('Failed to read backup: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
-  // reset input so same file can be re-imported
-  event.target.value = '';
-}
-
-
-// ─── AUDIT LOG ────────────────────────────────────────────────────────────────
-var auditLog = [];      // cell changes — visible to all roles
-var activityLog = [];   // user activity — admin only
-
-function logAudit(krId, week, oldStatus, newStatus, val, note) {
-  var kr = findKR(krId);
-  var obj = null;
-  objectives.forEach(function(o){ if(o.krs.find(function(k){return k.id===krId;})) obj=o; });
-  var weekLabel = (week < 0) ? '—' : 'W'+(week+1);
-  auditLog.unshift({
-    ts: new Date().toISOString(),
-    user: currentUser || 'Unknown',
-    objId: obj ? obj.id : krId,
-    krId: krId,
-    krLabel: kr ? kr.label.slice(0,50) : krId,
-    week: weekLabel,
-    from: oldStatus || '—',
-    to: newStatus,
-    val: val || '',
-    note: note || ''
-  });
-  if (auditLog.length > 500) auditLog.length = 500;
-  renderAudit();
-}
-
-function logActivity(action) {
-  activityLog.unshift({
-    ts: new Date().toISOString(),
-    user: currentUser || 'Unknown',
-    role: currentRole,
-    action: action
-  });
-  if (activityLog.length > 200) activityLog.length = 200;
-  renderActivityLog();
-}
-
-function statusFullLabel(s) {
-  return s==='g'?'G (On track)':s==='y'?'Y (At risk)':s==='r'?'R (Off track)':s==='b'?'— (Blank)':'—';
-}
-function statusLogClass(s) {
-  return s==='g'?'log-g':s==='y'?'log-y':s==='r'?'log-r':'log-b';
-}
-
-function renderAudit() {
-  var cont = document.getElementById('auditContent');
-  if (!cont) return;
-  if (!auditLog.length) {
-    cont.innerHTML = '<div class="audit-empty">No changes recorded yet.</div>';
-    return;
-  }
-  var html = '<table class="audit-table"><thead><tr><th>Time</th><th>User</th><th>OBJ</th><th>KR</th><th>Wk</th><th>From</th><th>To</th><th>Value</th><th>Note</th></tr></thead><tbody>';
-  auditLog.forEach(function(e) {
-    var d = new Date(e.ts);
-    var ts = d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    html += '<tr>';
-    html += '<td style="white-space:nowrap;color:#888">'+ts+'</td>';
-    html += '<td style="font-weight:600;color:#1a5276">'+esc(e.user)+'</td>';
-    html += '<td>'+esc(e.objId)+'</td>';
-    html += '<td title="'+esc(e.krLabel)+'">'+esc(e.krId)+'</td>';
-    var wkDisplay = (e.week === 'W0' || e.week === 'W-1') ? '—' : e.week;
-    html += '<td>'+wkDisplay+'</td>';
-    var isStructural = (e.to === 'added' || e.to === 'deleted');
-    if (isStructural) {
-      html += '<td colspan="2" style="color:#8e44ad;font-weight:700;font-size:10px;text-transform:uppercase">'+esc(e.to)+'</td>';
-    } else {
-      html += '<td><span class="'+statusLogClass(e.from)+'">'+esc(sLbl(e.from))+'</span></td>';
-      html += '<td><span class="'+statusLogClass(e.to)+'">'+esc(sLbl(e.to))+'</span></td>';
-    }
-    html += '<td>'+esc(e.val)+'</td>';
-    html += '<td>'+esc(e.note)+'</td>';
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  cont.innerHTML = html;
-}
-
-function toggleAudit() {
-  var body = document.getElementById('auditBody');
-  var lbl  = document.getElementById('auditToggleLabel');
-  if (body.classList.contains('open')) {
-    body.classList.remove('open');
-    lbl.textContent = 'Show ▼';
-  } else {
-    body.classList.add('open');
-    lbl.textContent = 'Hide ▲';
-    renderAudit();
-  }
-}
-
-function exportAuditCSV() {
-  var rows = [['Time','User','Objective','KR ID','KR Label','Week','From','To','Value','Note']];
-  auditLog.forEach(function(e) {
-    rows.push([e.ts, e.user, e.objId, e.krId, e.krLabel, e.week,
-               statusFullLabel(e.from), statusFullLabel(e.to), e.val, e.note]);
-  });
-  var csv = rows.map(function(r){return r.map(function(x){return '"'+String(x).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
-  var blob = new Blob([csv],{type:'text/csv'});
-  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='mober_okr_audit_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
-}
-
-function renderActivityLog() {
-  var cont = document.getElementById('activityLogContent');
-  if (!cont) return;
-  if (!activityLog.length) { cont.innerHTML='<div class="al-empty">No activity recorded yet.</div>'; return; }
-  var html = '';
-  activityLog.forEach(function(e) {
-    var d = new Date(e.ts);
-    var ts = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    html += '<div class="al-row"><span class="al-time">'+ts+'</span><span class="al-user">'+esc(e.user)+'</span><span style="font-size:10px;color:#888">('+e.role+')</span> '+esc(e.action)+'</div>';
-  });
-  cont.innerHTML = html;
-}
-
-
-
-// ─── USER PROFILE MODAL ───────────────────────────────────────────────────────
-var editingUserIndex = -1;
-
-function openAddUserModal() {
-  editingUserIndex = -1;
-  document.getElementById('userModalTitle').textContent = '\u{1F464} Add New User';
-  document.getElementById('uf_first').value = '';
-  document.getElementById('uf_last').value  = '';
-  document.getElementById('uf_email').value = '';
-  document.getElementById('uf_mobile').value = '';
-  document.getElementById('uf_dept').value  = '';
-  document.getElementById('uf_role').value  = 'viewer';
-  document.getElementById('uf_pin').value   = '';
-  document.getElementById('uf_pin2').value  = '';
-  document.getElementById('uf_error').textContent = '';
-  document.getElementById('activationPreview').textContent = 'Fill in the details above to preview the activation email.';
-  // Live preview on input
-  ['uf_first','uf_last','uf_email','uf_dept','uf_role','uf_pin'].forEach(function(id) {
-    document.getElementById(id).oninput = updateActivationPreview;
-  });
+function openAddUserModal(){
+  ['uf_first','uf_last','uf_email','uf_mobile','uf_pin','uf_pin2'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('uf_dept').value='';document.getElementById('uf_role').value='viewer';
+  document.getElementById('uf_error').textContent='';
+  document.getElementById('activationPreview').textContent='Fill in details above to preview.';
   document.getElementById('userProfileModal').classList.add('show');
 }
-
-function closeUserModal() {
-  document.getElementById('userProfileModal').classList.remove('show');
+function closeUserModal(){document.getElementById('userProfileModal').classList.remove('show');}
+function updateActivationPreview(){
+  var first=document.getElementById('uf_first').value.trim();var email=document.getElementById('uf_email').value.trim();
+  var dept=document.getElementById('uf_dept').value;var role=document.getElementById('uf_role').value;var pin=document.getElementById('uf_pin').value.trim();
+  if(!first&&!email){document.getElementById('activationPreview').textContent='Fill in details above to preview.';return;}
+  var rl=role==='admin'?'Admin':role==='editor'?'Editor':'Viewer';
+  var prog=document.getElementById('programName').value||'Mober OKR';
+  var text='Hi '+first+',\n\nYou have been added to '+prog+' as a '+rl+'.\n\n'+(dept?'Department: '+dept+'\n':'')+'Access level: '+rl+'\n'+(pin?'Your PIN: '+pin+'\n':'')+'\nTo access:\n1. Open the scorecard link\n2. Click the Sign In badge (top right)\n3. Select your name and enter your PIN\n\nChange your PIN after first login via Settings.\n\nOne source of truth — update weekly.\n\nMober Team';
+  document.getElementById('activationPreview').textContent=text;
+}
+function sendActivationEmail(){
+  var email=document.getElementById('uf_email').value.trim();if(!email){alert('Enter email first.');return;}
+  var prog=document.getElementById('programName').value||'Mober OKR';
+  var subj=encodeURIComponent('You have been added to '+prog);
+  var body=encodeURIComponent(document.getElementById('activationPreview').textContent);
+  window.location.href='mailto:'+encodeURIComponent(email)+'?subject='+subj+'&body='+body;
+}
+function copyActivationText(){
+  var text=document.getElementById('activationPreview').textContent;
+  if(!text||text.includes('Fill in')){alert('Complete the form first.');return;}
+  if(navigator.clipboard){navigator.clipboard.writeText(text).then(function(){alert('Copied.');});}
+  else{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('Copied.');}
+}
+async function saveUserProfile(){
+  var first=document.getElementById('uf_first').value.trim();var last=document.getElementById('uf_last').value.trim();
+  var email=document.getElementById('uf_email').value.trim();var mobile=document.getElementById('uf_mobile').value.trim();
+  var dept=document.getElementById('uf_dept').value;var role=document.getElementById('uf_role').value;
+  var pin=document.getElementById('uf_pin').value.trim();var pin2=document.getElementById('uf_pin2').value.trim();
+  var err=document.getElementById('uf_error');
+  if(!first){err.textContent='First name required.';return;}
+  if(!email){err.textContent='Email required.';return;}
+  if(!pin||pin.length<6){err.textContent='PIN must be 6 digits.';return;}
+  if(pin!==pin2){err.textContent='PINs do not match.';return;}
+  var name=(first+' '+last).trim();
+  setSyncStatus('busy');
+  try{
+    var r=await sb.from('users').insert({name:name,first_name:first,last_name:last,email:email,mobile:mobile,dept:dept,role:role,pin_hash:pin});
+    if(r.error)throw r.error;
+    users.push({name:name,firstName:first,lastName:last,email:email,mobile:mobile,dept:dept,role:role,pin:pin});
+    logActivity('Added user: '+name+' ('+role+')');renderUserTable();err.textContent='';closeUserModal();setSyncStatus('ok');
+  }catch(e){setSyncStatus('err');err.textContent='Save failed: '+e.message;}
 }
 
-function updateActivationPreview() {
-  var first = document.getElementById('uf_first').value.trim();
-  var last  = document.getElementById('uf_last').value.trim();
-  var email = document.getElementById('uf_email').value.trim();
-  var dept  = document.getElementById('uf_dept').value;
-  var role  = document.getElementById('uf_role').value;
-  var pin   = document.getElementById('uf_pin').value.trim();
-  var prog  = document.getElementById('headerProgram').textContent || 'Mober OKR Scorecard';
-  if (!first && !email) {
-    document.getElementById('activationPreview').textContent = 'Fill in the details above to preview the activation email.';
-    return;
+// ── PLAN B ────────────────────────────────────────────────────────────────────
+function checkPlanB(){
+  if(planbDismissed)return;
+  var threshold=settings.planBThreshold||3;var redCount=0;
+  objectives.forEach(function(obj){obj.krs.forEach(function(kr){var reds=0;for(var w=0;w<5;w++){var s=getCellState(kr.id,w).status||kr.defaults[w];if(s==='r')reds++;}if(reds>=threshold)redCount++;});});
+  var banner=document.getElementById('planbBanner');if(!banner)return;
+  var show=redCount>=threshold&&(settings.planBVisibleToAll||currentRole!=='viewer');
+  if(show){
+    banner.classList.add('show');
+    objectives.forEach(function(obj){obj.krs.forEach(function(kr){var reds=0;for(var w=0;w<5;w++){var s=getCellState(kr.id,w).status||kr.defaults[w];if(s==='r')reds++;}if(reds>=threshold){var cell=document.getElementById('c-'+kr.id+'-5');if(cell){var s6=getCellState(kr.id,5).status||kr.defaults[5];if(s6==='r'||s6==='b'){cell.querySelector('div').className='wp';cell.querySelector('div').textContent='P';}}}});});
+  }else{banner.classList.remove('show');}
+}
+function dismissPlanB(){planbDismissed=true;document.getElementById('planbBanner').classList.remove('show');objectives.forEach(function(obj){obj.krs.forEach(function(kr){var cell=document.getElementById('c-'+kr.id+'-5');if(cell){var s=getCellState(kr.id,5).status||kr.defaults[5];cell.querySelector('div').className=sCls(s);cell.querySelector('div').textContent=sLbl(s);}});});}
+
+// ── BUILD TABLE ───────────────────────────────────────────────────────────────
+function buildTable(){
+  var tbody=document.getElementById('tbody');var html='';
+  objectives.forEach(function(obj){
+    var objCols='';for(var w=0;w<13;w++){var is6=w===5;objCols+='<td class="obj-score'+(is6?' w6-obj':'')+'" style="'+(is6?'color:#e67e22;font-weight:800':'')+'">W'+(w+1)+'</td>';}
+    html+='<tr><td class="obj-row" colspan="2"><div class="obj-edit-wrap"><span class="obj-edit-id">'+esc(obj.id)+'</span><span class="obj-title-text" onclick="startEditObj(\''+esc(obj.id)+'\')">'+esc(obj.label)+'</span><input class="obj-title-input" id="obj-input-'+esc(obj.id)+'" type="text" value="'+esc(obj.label)+'" onkeydown="objKeydown(event,\''+esc(obj.id)+'\')" /><button class="obj-btn" onclick="startEditObj(\''+esc(obj.id)+'\')">Edit</button><button class="add-kr-btn" onclick="addKR(\''+esc(obj.id)+'\')">+ KR</button><button class="obj-del-btn" onclick="deleteObjective(\''+esc(obj.id)+'\')">Del</button></div></td>'+objCols+'</tr>';
+    obj.krs.forEach(function(kr){
+      var krObjId=findObjOfKR(kr.id)?findObjOfKR(kr.id).id:'';
+      var krCols='';for(var w=0;w<13;w++){var s=getCellState(kr.id,w).status||kr.defaults[w];var v=getCellState(kr.id,w).val;var n=getCellState(kr.id,w).note;var tip=[v,n].filter(Boolean).join(' · ')||kr.kpi;var is6=w===5;krCols+='<td class="wk'+(is6?' w6-col':'')+'" id="c-'+kr.id+'-'+w+'" onclick="openCellModal(\''+esc(kr.id)+'\','+w+')" title="'+esc(tip)+'"><div class="'+sCls(s)+'">'+sLbl(s)+'</div></td>';}
+      html+='<tr><td class="kr-label"><div class="kr-label-wrap"><span class="kr-id-badge">'+esc(kr.id)+'</span><span class="kr-text"><span class="kr-title-display" onclick="startEditKR(\''+esc(kr.id)+'\')">'+esc(kr.label)+'</span><input class="kr-title-input" id="kr-title-'+esc(kr.id)+'" type="text" value="'+esc(kr.label)+'" /><span class="kr-kpi">&#128202; '+esc(kr.kpi)+'</span><input class="kr-kpi-input" id="kr-kpi-'+esc(kr.id)+'" type="text" value="'+esc(kr.kpi)+'" placeholder="KPI" /></span><span class="kr-actions"><button class="kr-save-btn" id="kr-save-'+esc(kr.id)+'" onclick="saveKREdit(\''+esc(kr.id)+'\')">Save</button><button class="kr-del-btn" onclick="deleteKR(\''+esc(krObjId)+'\',\''+esc(kr.id)+'\')">Del</button></span></div></td><td class="wt-cell">'+esc(kr.wt)+'</td>'+krCols+'</tr>';
+    });
+  });
+  if(settings.showScore){
+    var scoreCols='';for(var w=0;w<13;w++){var total=0,green=0;objectives.forEach(function(obj){obj.krs.forEach(function(kr){var s=getCellState(kr.id,w).status||kr.defaults[w];if(s!=='b'){total++;if(s==='g')green++;}});});var pct=total>0?Math.round(green/total*100):0;var bg=pct>=70?'#27ae60':pct>=40?'#f39c12':'#e74c3c';var bdr=w===5?'border-left:2px solid #e67e22;border-right:2px solid #e67e22;':'';scoreCols+='<td class="'+(w===5?'w6-col':'')+'" style="background:'+bg+';color:#fff;font-size:11px;font-weight:700;'+bdr+'">'+pct+'%</td>';}
+    html+='<tr class="score-row"><td class="score-label" colspan="2">Weekly OKR health — % KRs on track</td>'+scoreCols+'</tr>';
   }
-  var name = (first + ' ' + last).trim() || email;
-  var roleLabel = role==='admin'?'Admin':role==='editor'?'Editor':'Viewer';
-  var preview = 'Hi ' + first + ',\n\n' +
-    'You have been added to the ' + prog + ' as a ' + roleLabel + '.\n\n' +
-    (dept ? 'Department: ' + dept + '\n' : '') +
-    'Access: ' + roleLabel + '\n' +
-    (pin ? 'Your PIN: ' + pin + '\n' : '') +
-    '\nTo access the scorecard:\n' +
-    '1. Open the scorecard file\n' +
-    '2. Click the role badge (top right)\n' +
-    '3. Select your name and enter your PIN\n\n' +
-    'Please change your PIN after first login via Settings.\n\n' +
-    'One source of truth — update weekly.\n\nMober Team';
-  document.getElementById('activationPreview').textContent = preview;
+  tbody.innerHTML=html;applyRole();checkPlanB();buildDashboard();
 }
 
-function sendActivationEmail() {
-  var first = document.getElementById('uf_first').value.trim();
-  var last  = document.getElementById('uf_last').value.trim();
-  var email = document.getElementById('uf_email').value.trim();
-  var role  = document.getElementById('uf_role').value;
-  var prog  = document.getElementById('headerProgram').textContent || 'Mober OKR Scorecard';
-  if (!email) { alert('Enter email address first.'); return false; }
-  var name = (first + ' ' + last).trim() || email;
-  var roleLabel = role==='admin'?'Admin':role==='editor'?'Editor':'Viewer';
-  var subject = encodeURIComponent('You have been added to ' + prog);
-  var body = encodeURIComponent(document.getElementById('activationPreview').textContent);
-  window.location.href = 'mailto:' + encodeURIComponent(email) + '?subject=' + subject + '&body=' + body;
-  return false;
-}
-
-function copyActivationText() {
-  var text = document.getElementById('activationPreview').textContent;
-  if (!text || text.includes('Fill in')) { alert('Complete the form first.'); return; }
-  navigator.clipboard ? navigator.clipboard.writeText(text).then(function(){
-    alert('Message copied to clipboard.');
-  }) : (function(){
-    var ta = document.createElement('textarea');
-    ta.value = text; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    alert('Message copied.');
-  })();
-}
-
-function saveUserProfile() {
-  var first = document.getElementById('uf_first').value.trim();
-  var last  = document.getElementById('uf_last').value.trim();
-  var email = document.getElementById('uf_email').value.trim();
-  var mobile= document.getElementById('uf_mobile').value.trim();
-  var dept  = document.getElementById('uf_dept').value;
-  var role  = document.getElementById('uf_role').value;
-  var pin   = document.getElementById('uf_pin').value.trim();
-  var pin2  = document.getElementById('uf_pin2').value.trim();
-  var errEl = document.getElementById('uf_error');
-
-  if (!first) { errEl.textContent='First name is required.'; return; }
-  if (!email) { errEl.textContent='Email address is required.'; return; }
-  if (!pin)   { errEl.textContent='PIN is required.'; return; }
-  if (pin !== pin2) { errEl.textContent='PINs do not match.'; return; }
-  if (pin.length < 4) { errEl.textContent='PIN must be at least 4 characters.'; return; }
-
-  var name = (first + ' ' + last).trim();
-  var duplicate = users.find(function(u,i){ return u.email===email && i!==editingUserIndex; });
-  if (duplicate) { errEl.textContent='A user with this email already exists.'; return; }
-
-  var userObj = { name:name, firstName:first, lastName:last, email:email, mobile:mobile, dept:dept, role:role, pin:pin, activatedAt: new Date().toISOString() };
-
-  if (editingUserIndex >= 0) {
-    users[editingUserIndex] = userObj;
-    logActivity('Updated user profile: ' + name);
-  } else {
-    users.push(userObj);
-    logActivity('Added new user: ' + name + ' (' + role + ')');
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function buildDashboard(){
+  var allKRs=[];objectives.forEach(function(obj){obj.krs.forEach(function(kr){allKRs.push(kr);});});
+  var latestW=0;
+  for(var w=12;w>=0;w--){var hasData=allKRs.some(function(kr){return getCellState(kr.id,w).status;});if(hasData){latestW=w;break;}}
+  var total=0,green=0,amber=0,red=0,blank=0;
+  allKRs.forEach(function(kr){var s=getCellState(kr.id,latestW).status||kr.defaults[latestW];if(s==='g')green++;else if(s==='y')amber++;else if(s==='r')red++;else blank++;total++;});
+  var healthPct=total>0?Math.round(green/total*100):0;
+  var mc=document.getElementById('dashMetrics');
+  if(mc){
+    var hCls=healthPct>=70?'green':healthPct>=40?'amber':'red';
+    mc.innerHTML='<div class="metric-card '+hCls+'"><div class="metric-label">OKR health</div><div class="metric-val">'+healthPct+'%</div><div class="metric-sub">W'+(latestW+1)+' on track</div></div>'+
+    '<div class="metric-card green"><div class="metric-label">On track</div><div class="metric-val">'+green+'</div><div class="metric-sub">of '+total+' KRs</div></div>'+
+    '<div class="metric-card amber"><div class="metric-label">At risk</div><div class="metric-val">'+amber+'</div><div class="metric-sub">need attention</div></div>'+
+    '<div class="metric-card red"><div class="metric-label">Off track</div><div class="metric-val">'+red+'</div><div class="metric-sub">immediate action</div></div>';
   }
-
-  renderUserTable();
-  errEl.textContent = '';
-  closeUserModal();
+  var opc=document.getElementById('objProgressCards');
+  if(opc){
+    var html='';
+    objectives.forEach(function(obj){
+      var og=0,oa=0,or_=0,ob=0,ot=0;
+      obj.krs.forEach(function(kr){var s=getCellState(kr.id,latestW).status||kr.defaults[latestW];if(s==='g')og++;else if(s==='y')oa++;else if(s==='r')or_++;else ob++;ot++;});
+      var pct=ot>0?Math.round(og/ot*100):0;
+      var pCls=pct>=70?'pct-green':pct>=40?'pct-amber':'pct-red';
+      var pbCls=pct>=70?'pb-green':pct>=40?'pb-amber':'pb-red';
+      var dots=obj.krs.map(function(kr){var s=getCellState(kr.id,latestW).status||kr.defaults[latestW];return '<span class="kr-dot '+sCls(s)+'" title="'+esc(kr.id)+': '+esc(kr.label.slice(0,40))+'"></span>';}).join('');
+      html+='<div class="obj-card"><div class="obj-card-header"><span class="obj-card-title">'+esc(obj.id)+' &nbsp; '+esc(obj.label.slice(0,60))+(obj.label.length>60?'…':'')+'</span><span class="obj-card-pct '+pCls+'">'+pct+'%</span></div><div class="progress-bar-wrap"><div class="progress-bar '+pbCls+'" style="width:'+pct+'%"></div></div><div class="kr-dots">'+dots+'</div></div>';
+    });
+    opc.innerHTML=html;
+  }
+  var hg=document.getElementById('heatmapGrid');
+  if(hg){
+    var html='<div class="hm-hdr"></div>';
+    for(var w=0;w<13;w++){html+='<div class="hm-hdr">W'+(w+1)+'</div>';}
+    objectives.forEach(function(obj){
+      obj.krs.forEach(function(kr){
+        html+='<div class="hm-label" title="'+esc(kr.label)+'">'+esc(kr.id)+'</div>';
+        for(var w=0;w<13;w++){var s=getCellState(kr.id,w).status||kr.defaults[w];var cls=s==='g'?'hm-g':s==='y'?'hm-y':s==='r'?'hm-r':'hm-b';var lbl=s==='g'?'G':s==='y'?'Y':s==='r'?'R':'';html+='<div class="hm-cell '+cls+'" title="'+esc(kr.id)+' W'+(w+1)+'">'+lbl+'</div>';}
+      });
+    });
+    hg.innerHTML=html;
+  }
 }
 
-// ─── PATCH renderUserTable to use new fields + show "Add User" modal button ──
-
-function confirmDeleteUser(i) {
-  var u = users[i];
-  var name = u.firstName ? (u.firstName+(u.lastName?' '+u.lastName:'')) : u.name;
-  if (!confirm('Remove ' + name + '?')) return;
-  logActivity('Removed user: ' + name);
-  users.splice(i,1);
-  renderUserTable();
+// ── CELL MODAL ────────────────────────────────────────────────────────────────
+function openCellModal(krId,w){
+  if(currentRole==='viewer'||!currentUser)return;
+  cellEditTarget={krId:krId,w:w};var kr=findKR(krId);var cur=getCellState(krId,w);
+  document.getElementById('cellModalTitle').textContent=kr?kr.label:krId;
+  document.getElementById('cellModalSub').textContent=krId+' · Week '+(w+1)+(kr?' · KPI: '+kr.kpi:'');
+  document.getElementById('cellStatus').value=cur.status||(kr?kr.defaults[w]:'b');
+  document.getElementById('cellVal').value=cur.val;document.getElementById('cellNotes').value=cur.note;
+  document.getElementById('cellModal').classList.add('show');
+}
+function closeCellModal(e){if(e&&e.target!==document.getElementById('cellModal'))return;document.getElementById('cellModal').classList.remove('show');cellEditTarget=null;}
+function saveCellModal(){
+  if(!cellEditTarget)return;
+  var krId=cellEditTarget.krId,w=cellEditTarget.w;
+  var kr=findKR(krId);var oldS=getCellState(krId,w).status||(kr?kr.defaults[w]:'b');
+  var ns=document.getElementById('cellStatus').value;var val=document.getElementById('cellVal').value.trim();var note=document.getElementById('cellNotes').value.trim();
+  setCellState(krId,w,ns,val,note);
+  logAudit(krId,w,oldS,ns,val,note,'cell');logActivity('Updated '+krId+' W'+(w+1)+' → '+sLbl(ns));
+  document.getElementById('cellModal').classList.remove('show');cellEditTarget=null;planbDismissed=false;
+  saveToDB();buildTable();
 }
 
-// ─── ADD activity log section to settings drawer (injected on open) ───────────
-
-
-function exportActivityCSV() {
-  var rows=[['Time','User','Role','Action']];
-  activityLog.forEach(function(e){ rows.push([e.ts,e.user,e.role,e.action]); });
-  var csv=rows.map(function(r){return r.map(function(x){return '"'+String(x).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
-  var blob=new Blob([csv],{type:'text/csv'});
-  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='mober_activity_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+// ── OBJ / KR EDIT ─────────────────────────────────────────────────────────────
+function startEditObj(objId){if(currentRole!=='admin')return;var inp=document.getElementById('obj-input-'+objId);if(!inp)return;var span=inp.previousElementSibling;if(inp.style.display==='inline'){var obj=objectives.find(function(o){return o.id===objId;});if(obj)obj.label=inp.value;saveToDB();buildTable();return;}if(span)span.style.display='none';inp.style.display='inline';inp.focus();inp.select();}
+function objKeydown(e,objId){if(e.key==='Enter'){var inp=document.getElementById('obj-input-'+objId);var obj=objectives.find(function(o){return o.id===objId;});if(obj&&inp)obj.label=inp.value;saveToDB();buildTable();}if(e.key==='Escape')buildTable();}
+function addObjective(){
+  if(currentRole!=='admin'){alert('Admin access required.');return;}
+  var usedNums=objectives.map(function(o){var m=o.id.match(/OBJ-(\d+)$/);return m?parseInt(m[1],10):0;});
+  objCounter=usedNums.length?Math.max.apply(null,usedNums):DEFAULT_OBJECTIVES.length;objCounter++;
+  var newId='OBJ-'+objCounter;
+  objectives.push({id:newId,label:'New Objective '+objCounter,krs:[{id:newId+'.KR1',label:'New Key Result',kpi:'KPI to track',wt:'100%',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']}]});
+  logAudit(newId,-1,null,'added','','OBJ added by '+currentUser,'structure');logActivity('Added objective: '+newId);
+  saveToDB();buildTable();
+}
+function deleteObjective(objId){
+  if(currentRole!=='admin'){alert('Admin access required.');return;}
+  if(!confirm('Delete '+objId+' and all its Key Results?'))return;
+  var delObj=objectives.find(function(o){return o.id===objId;});
+  objectives=objectives.filter(function(o){return o.id!==objId;});
+  logAudit(objId,-1,'active','deleted','','OBJ deleted by '+currentUser,'structure');logActivity('Deleted objective: '+objId);
+  saveToDB();buildTable();
+}
+function startEditKR(krId){if(currentRole!=='admin')return;var ti=document.getElementById('kr-title-'+krId);var ki=document.getElementById('kr-kpi-'+krId);var sb_=document.getElementById('kr-save-'+krId);if(!ti)return;var disp=ti.previousElementSibling;var kpiSpan=ki?ki.previousElementSibling:null;if(disp)disp.style.display='none';if(kpiSpan)kpiSpan.style.display='none';ti.style.display='block';if(ki)ki.style.display='block';if(sb_)sb_.style.display='inline-block';ti.focus();ti.select();}
+function saveKREdit(krId){
+  var ti=document.getElementById('kr-title-'+krId);var ki=document.getElementById('kr-kpi-'+krId);
+  for(var i=0;i<objectives.length;i++){var kr=objectives[i].krs.find(function(k){return k.id===krId;});if(kr){if(ti)kr.label=ti.value||kr.label;if(ki)kr.kpi=ki.value||kr.kpi;break;}}
+  logActivity('Edited KR: '+krId);saveToDB();buildTable();
+}
+function addKR(objId){
+  if(currentRole!=='admin'){alert('Admin access required.');return;}
+  var obj=objectives.find(function(o){return o.id===objId;});if(!obj)return;
+  if(!krCounters[objId])krCounters[objId]=obj.krs.length;krCounters[objId]++;
+  var newId=objId+'.KR'+krCounters[objId];
+  obj.krs.push({id:newId,label:'New Key Result',kpi:'KPI to track',wt:'—',defaults:['b','b','b','b','b','b','b','b','b','b','b','b','b']});
+  logAudit(newId,-1,null,'added','','KR added to '+objId,'structure');logActivity('Added KR: '+newId);
+  saveToDB();buildTable();
+}
+function deleteKR(objId,krId){
+  if(currentRole!=='admin'){alert('Admin access required.');return;}
+  if(!confirm('Delete KR '+krId+'?'))return;
+  var obj=objectives.find(function(o){return o.id===objId;});if(!obj)return;
+  obj.krs=obj.krs.filter(function(k){return k.id!==krId;});
+  logAudit(krId,-1,'active','deleted','','KR deleted from '+objId,'structure');logActivity('Deleted KR: '+krId);
+  saveToDB();buildTable();
 }
 
+// ── AUDIT RENDER ──────────────────────────────────────────────────────────────
+function slcls(s){return s==='g'?'log-g':s==='y'?'log-y':s==='r'?'log-r':'log-b';}
+function renderAuditFull(){
+  var cont=document.getElementById('auditFullContent');if(!cont)return;
+  if(!auditLog.length){cont.innerHTML='<div class="audit-empty">No changes recorded yet.</div>';return;}
+  var html='<table class="audit-table" style="width:100%"><thead><tr><th>Time</th><th>User</th><th>OBJ</th><th>KR</th><th>Week</th><th>From</th><th>To</th><th>Value</th><th>Notes</th><th>Type</th></tr></thead><tbody>';
+  auditLog.forEach(function(e){
+    var d=new Date(e.ts||e.created_at);var ts=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    var isStruct=e.to_status==='added'||e.to_status==='deleted';
+    html+='<tr><td style="white-space:nowrap;color:#888;font-size:10px">'+ts+'</td><td style="font-weight:600;color:#1a5276">'+esc(e.username||e.user||'')+'</td><td>'+esc(e.obj_id||e.objId||'')+'</td><td title="'+esc(e.kr_label||e.krLabel||'')+'">'+esc(e.kr_id||e.krId||'')+'</td><td>'+esc(e.week||'')+'</td>';
+    if(isStruct){html+='<td colspan="2" style="color:#8e44ad;font-weight:700;font-size:10px;text-transform:uppercase">'+esc(e.to_status||e.to||'')+'</td>';}
+    else{html+='<td><span class="'+slcls(e.from_status||e.from||'')+'">'+sLbl(e.from_status||e.from||'b')+'</span></td><td><span class="'+slcls(e.to_status||e.to||'')+'">'+sLbl(e.to_status||e.to||'b')+'</span></td>';}
+    html+='<td>'+esc(e.val||e.value||'')+'</td><td>'+esc(e.note||'')+'</td><td style="color:#aaa;font-size:10px">'+esc(e.action_type||'cell')+'</td></tr>';
+  });
+  html+='</tbody></table>';cont.innerHTML=html;
+}
+function renderActivityLog(){
+  var cont=document.getElementById('activityLogContent');if(!cont)return;
+  if(!activityLog.length){cont.innerHTML='<div class="al-empty">No activity yet.</div>';return;}
+  var html='';
+  activityLog.forEach(function(e){
+    var d=new Date(e.ts||e.created_at);var ts=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    html+='<div class="al-row"><span class="al-time">'+ts+'</span><span class="al-user">'+esc(e.username||e.user||'')+'</span><span style="font-size:10px;color:#888">('+esc(e.role||'')+')</span> '+esc(e.action||'')+'</div>';
+  });
+  cont.innerHTML=html;
+}
+function exportAuditCSV(){
+  var rows=[['Time','User','OBJ','KR ID','KR','Week','From','To','Value','Notes','Type']];
+  auditLog.forEach(function(e){rows.push([e.ts||e.created_at,e.username||e.user,e.obj_id||e.objId,e.kr_id||e.krId,e.kr_label||e.krLabel,e.week,e.from_status||e.from,e.to_status||e.to,e.val||'',e.note||'',e.action_type||'cell']);});
+  dlCSV(rows,'mober_okr_audit_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportActivityCSV(){
+  var rows=[['Time','User','Role','Action']];activityLog.forEach(function(e){rows.push([e.ts||e.created_at,e.username||e.user,e.role,e.action]);});
+  dlCSV(rows,'mober_activity_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function dlCSV(rows,fname){var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=fname;a.click();}
 
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+function exportCSV(){
+  var rows=[['OBJ','KR ID','Key Result','KPI','Weight','W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12','W13']];
+  objectives.forEach(function(obj){obj.krs.forEach(function(kr){var row=[obj.id,kr.id,kr.label,kr.kpi,kr.wt];for(var w=0;w<13;w++){var s=getCellState(kr.id,w).status||kr.defaults[w];var v=getCellState(kr.id,w).val;row.push(v?sLbl(s)+'('+v+')':sLbl(s));}rows.push(row);});});
+  dlCSV(rows,'mober_okr_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportJSON(){
+  var payload={version:'mober_okr_live_v2',exportedAt:new Date().toISOString(),objectives:objectives,cellData:cellData,settings:settings};
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));a.download='mober_okr_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+function importJSON(event){
+  var file=event.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=JSON.parse(e.target.result);
+      if(!confirm('Restore from backup dated '+(data.exportedAt||'unknown')+'?'))return;
+      if(data.objectives)objectives=data.objectives;if(data.cellData)cellData=data.cellData;if(data.settings)settings=data.settings;
+      saveToDB();buildTable();alert('Restore complete.');
+    }catch(err){alert('Failed: '+err.message);}
+  };reader.readAsText(file);event.target.value='';
+}
+function resetCells(){if(currentRole!=='admin'){alert('Admin access required.');return;}if(!confirm('Clear all RAG data? Objectives and KRs are kept.'))return;cellData={};planbDismissed=false;logActivity('Reset cells');saveToDB();buildTable();}
+function resetAll(){if(currentRole!=='admin'){alert('Admin access required.');return;}if(!confirm('Reset everything to defaults?'))return;objectives=JSON.parse(JSON.stringify(DEFAULT_OBJECTIVES));cellData={};planbDismissed=false;logActivity('Full reset');saveToDB();buildTable();}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');document.getElementById('tab-'+name).classList.add('active');
+  if(name==='audit')loadAuditFromDB();
+  if(name==='dashboard')buildDashboard();
+}
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){document.getElementById('cellModal').classList.remove('show');document.getElementById('settingsOverlay').classList.remove('show');document.getElementById('userProfileModal').classList.remove('show');cellEditTarget=null;}
+  if(e.key==='Enter'&&cellEditTarget)saveCellModal();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+buildTable();updateHeader();loadFromDB();
 </script>
 </body>
 </html>
