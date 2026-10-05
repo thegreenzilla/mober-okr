@@ -716,7 +716,9 @@ async function loadFromDB(){
     if(r.data){
       if(r.data.objectives)dbObjectives=r.data.objectives;
       if(r.data.cell_data)dbCellData=r.data.cell_data;
+      // Only load cell data when a user is signed in — viewers see blank cells until login
       if(currentUser&&!sampleMode){cellData=dbCellData;objectives=liveObjectives();}
+      else{cellData={};objectives=liveObjectives();}
       if(r.data.settings)settings=r.data.settings;
       dbVersion=r.data.updated_at;
       setLastSaved(new Date(r.data.updated_at).toLocaleTimeString());
@@ -818,7 +820,7 @@ function doLogin(){
   var user=users.find(function(u){return u.name===name&&u.pin===pin;});
   if(!user){document.getElementById('loginError').textContent='Incorrect PIN. Try again.';document.getElementById('loginPin').value='';return;}
   currentRole=user.role;currentUser=user.name;closeLogin();
-  if(sampleMode)exitSample();else{cellData=dbCellData;objectives=liveObjectives();}
+  if(sampleMode)exitSample();else{cellData=JSON.parse(JSON.stringify(dbCellData||{}));objectives=liveObjectives();}
   logActivity('Signed in as '+user.role);buildTable();applyRole();
 }
 
