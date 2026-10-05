@@ -674,7 +674,7 @@ var dbVersion = null;
 var dbCellData = {};
 var sampleMode = false;
 
-function liveObjectives(){return (dbObjectives&&dbObjectives.length)?dbObjectives:JSON.parse(JSON.stringify(DEFAULT_OBJECTIVES));}
+function liveObjectives(){return (dbObjectives&&dbObjectives.length)?dbObjectives:[];}
 var EMPTY_HTML='';
 function PBW(){var n=parseInt(settings.planBWeek,10);return (n>=2&&n<=13?n:6)-1;}
 function refreshGateHeaders(){var g=PBW();for(var w=0;w<13;w++){var th=document.getElementById('wh'+w);if(!th)continue;th.className='wk-h'+(w===g?' w6-th':'');if(!settings.startDate)th.innerHTML='W'+(w+1)+(w===g?'&#9733;':'');}var h2=document.getElementById('planbTitle');if(h2)h2.innerHTML='Plan B alert &middot; sustained red flags in W1&ndash;W'+g;}
@@ -707,7 +707,8 @@ async function loadFromDB(){
     if(!users.length){
       users=[{name:'DN',firstName:'DN',lastName:'',email:'',mobile:'',dept:'Executive',role:'admin',pin:'123456',id:'local'}];
     }
-    objectives=liveObjectives();
+    objectives=[];
+    cellData={};
     buildTable();buildDashboard();return;
   }
   setSyncStatus('busy');
